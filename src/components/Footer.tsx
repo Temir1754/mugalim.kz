@@ -18,10 +18,7 @@ export default function Footer() {
           {/* Logo & About */}
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             <div className="logo" style={{ color: "white", fontSize: "1.5rem", gap: "10px" }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
-              </svg>
-              <span style={{ fontWeight: "800" }}>Мұғалім.kz</span>
+              <img src="/logo.png" alt="Mugalim.kz" style={{ height: "50px", width: "auto", filter: "brightness(0) invert(1)" }} />
             </div>
             <p style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.6)", lineHeight: "1.6" }}>
               {t('footer_desc')}
