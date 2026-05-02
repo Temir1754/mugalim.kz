@@ -30,6 +30,19 @@ export default function Login() {
     setSuccess("");
     
     try {
+      // 1. ПЕРВЫМ ДЕЛОМ: Ищем в localStorage (наша тестовая база)
+      const allUsers = JSON.parse(localStorage.getItem("registeredUsers") || "[]");
+      const localUser = allUsers.find((u: any) => (u.username === username || u.phone === username) && u.password === password);
+
+      if (localUser) {
+        localStorage.setItem("user", JSON.stringify(localUser));
+        if (localUser.role === "ADMIN") window.location.href = "/admin";
+        else if (localUser.role === "SELLER") window.location.href = "/seller";
+        else window.location.href = "/client";
+        return;
+      }
+
+      // 2. ЕСЛИ НЕ НАШЛИ: Спрашиваем сервер (реальная база)
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
     if (state === 'START' || message.toLowerCase() === 'привет') {
       await sendWhatsAppMessage(phone, 
-        "Сәлем! Я ИИ-ассистент Мұғалім.kz 🤖\n\nЧтобы я мог готовить для вас документы, мне нужно один раз узнать данные вашей школы.\n\nНапишите название вашей школы:");
+        "Сәлем! Я ИИ-ассистент mu-ga-lim.kz 🤖\n\nЧтобы я мог готовить для вас документы, мне нужно один раз узнать данные вашей школы.\n\nНапишите название вашей школы:");
       
       await prisma.whatsAppProfile.update({
         where: { phone },

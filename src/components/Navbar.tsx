@@ -19,9 +19,59 @@ export default function Navbar() {
     // Check user
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      const parsedUser = JSON.parse(savedUser);
+      
+      // Автоматическая проверка срока действия тарифа
+      if (parsedUser.subscription && parsedUser.subscription.status === 'ACTIVE') {
+        const [day, month, year] = parsedUser.subscription.endDate.split('.');
+        const endDate = new Date(Number(year), Number(month) - 1, Number(day));
+        const now = new Date();
+
+        if (now > endDate) {
+          // Тариф аяқталды! Өшіру
+          parsedUser.subscription.status = 'EXPIRED';
+          localStorage.setItem("user", JSON.stringify(parsedUser));
+          
+          // Обновляем в общем списке пользователей
+          const allUsers = JSON.parse(localStorage.getItem("registeredUsers") || "[]");
+          const idx = allUsers.findIndex((u: any) => u.username === parsedUser.username);
+          if (idx !== -1) {
+            allUsers[idx].subscription.status = 'EXPIRED';
+            localStorage.setItem("registeredUsers", JSON.stringify(allUsers));
+          }
+          
+          alert("Сіздің тарифіңіздің мерзімі аяқталды. Жұмысты жалғастыру үшін тарифті жаңартыңыз.");
+        }
+      }
+      
+      setUser(parsedUser);
     }
     
+    // Инициализация или обновление тестовых юзеров
+    const existingUsersRaw = localStorage.getItem("registeredUsers");
+    let allUsers = existingUsersRaw ? JSON.parse(existingUsersRaw) : [];
+    
+    const zavuchIdx = allUsers.findIndex((u: any) => u.username === "zavuch");
+    
+    if (zavuchIdx === -1) {
+      // Добавляем Завуча с активным тарифом Мектеп
+      allUsers.push({ username: "zavuch", password: "123321", phone: "+7 (777) 111-22-33", role: "SCHOOL_ADMIN", subscription: { status: "ACTIVE", plan: "Мектеп", endDate: "01.06.2026" } });
+    } else {
+      // Принудительно ставим активный тариф Мектеп
+      allUsers[zavuchIdx].password = "123321";
+      allUsers[zavuchIdx].subscription = { status: "ACTIVE", plan: "Мектеп", endDate: "01.06.2026" }; 
+    }
+
+    // Добавляем остальных, если их нет
+    if (!allUsers.some((u: any) => u.username === "teacher")) {
+      allUsers.push({ username: "teacher", password: "password", phone: "+7 (777) 444-55-66", role: "CLIENT", subscription: { status: "EXPIRED", plan: "Базалық", endDate: "01.05.2026" } });
+    }
+    if (!allUsers.some((u: any) => u.username === "avtor")) {
+      allUsers.push({ username: "avtor", password: "password", phone: "+7 (777) 888-99-00", role: "SELLER" });
+    }
+
+    localStorage.setItem("registeredUsers", JSON.stringify(allUsers));
+
     // Ensure no leftover dark mode class
     document.documentElement.classList.remove("dark");
   }, []);
@@ -43,7 +93,7 @@ export default function Navbar() {
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
           <Link href="/" style={{ textDecoration: "none" }}>
             <div className="logo" style={{ fontSize: "1.4rem" }}>
-              <img src="/logo.png" alt="Mugalim.kz" style={{ height: "45px", width: "auto" }} />
+              <img src="/logo.svg" alt="Mugalim.kz" style={{ height: "60px", width: "auto" }} />
             </div>
           </Link>
         </div>

@@ -18,7 +18,7 @@ export default function Footer() {
           {/* Logo & About */}
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             <div className="logo" style={{ color: "white", fontSize: "1.5rem", gap: "10px" }}>
-              <img src="/logo.png" alt="Mugalim.kz" style={{ height: "50px", width: "auto", filter: "brightness(0) invert(1)" }} />
+              <img src="/logo.svg" alt="Mugalim.kz" style={{ height: "70px", width: "auto", filter: "brightness(0) invert(1)" }} />
             </div>
             <p style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.6)", lineHeight: "1.6" }}>
               {t('footer_desc')}
