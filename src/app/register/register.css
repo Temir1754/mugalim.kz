@@ -1,0 +1,26 @@
+.role-switch {
+  display: flex;
+  background-color: var(--input-bg);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 20px;
+}
+
+.role-btn {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.role-btn.active {
+  background-color: #ffffff;
+  color: var(--primary-blue);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}

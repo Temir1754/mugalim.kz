@@ -1,0 +1,95 @@
+// Это архитектура вашей Базы Данных, построенная строго по вашим фото!
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// Роли пользователей: Клиент, Продавец, Админ
+enum Role {
+  CLIENT
+  SELLER
+  ADMIN
+}
+
+// Статусы документов (Модерация админом из фото: проверка...? -> одобренно... V)
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  role         Role     @default(CLIENT)
+  
+  // Общие поля (строго из ваших записей):
+  fio          String   // ФИО
+  phone        String   // Номер телефона
+  region       String   // Регион
+  schoolType     String?  // Тип школы (Мемлекеттік/Жекеменшік)
+  schoolName     String?  // Название школы
+  specialty      String   // Специальность
+  isClassTeacher String?  // Является ли классным руководителем
+  className      String?  // Номер класса
+  gender         String?  // Пол (опционально)
+  username     String   @unique // Логин
+  passwordHash String   // Пароль
+  
+  // У продавца есть Фото (Аватар)
+  avatarUrl    String?
+  
+  // Кошелек Клиента
+  balance      Float    @default(0) // Пополнить счет -> Каспий
+  subEndsAt    DateTime? // Для подписки: Біткен кезде подписка -> оплатить деп шығып тұру керек
+  
+  // Файлы, загруженные продавцом
+  materials    Material[] @relation("SellerMaterials")
+
+  // WhatsApp профиль
+  whatsAppProfile WhatsAppProfile?
+}
+
+model WhatsAppProfile {
+  id              String   @id @default(uuid())
+  phone           String   @unique  // Номер телефона (главный ID в WhatsApp)
+  
+  // Сохраненный профиль (то, что спрашиваем один раз)
+  schoolName      String?           // Название школы
+  language        String?  @default("ru") // Язык (ru/kz)
+  mainSubject     String?           // Основной предмет учителя
+  
+  // Состояние диалога (AI State Machine)
+  currentState    String   @default("IDLE")
+  
+  // Временный сейв данных для текущего документа
+  tempData        Json?    
+  
+  // Для функции "Продолжаем работать?"
+  lastInteraction DateTime @updatedAt
+  
+  // Связь с основным аккаунтом на сайте (если есть)
+  userId          String?  @unique
+  user            User?    @relation(fields: [userId], references: [id])
+}
+
+model Material {
+  id             String         @id @default(uuid())
+  type           String         // КТП или КСП
+  subject        String         // Предмет (қазақ тілі)
+  dayOfWeek      String         // День (Пн)
+  classNumber    String         // Сынып (урок)
+  
+  authorId       String
+  author         User           @relation("SellerMaterials", fields: [authorId], references: [id])
+  
+  // Статус (Проверка админом)
+  status         ApprovalStatus @default(PENDING) 
+  fileUrl        String         // Скачать
+  
+  createdAt      DateTime       @default(now())
+}
