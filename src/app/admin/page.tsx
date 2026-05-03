@@ -123,7 +123,7 @@ export default function AdminDashboard() {
     return (
       <div className="login-screen">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="login-card">
-          <div className="icon">🔐</div>
+          <div style={{ marginBottom: "20px", fontWeight: 900, color: "#0f172a", fontSize: "1.2rem" }}>ADMIN</div>
           <h2>Админ Панель</h2>
           <form onSubmit={handleLogin}>
             <input type="text" placeholder="Логин" value={login} onChange={(e) => setLogin(e.target.value)} />
@@ -155,11 +155,11 @@ export default function AdminDashboard() {
           <h1>Mugalim.kz</h1>
         </div>
         <nav>
-          <button className={activeTab === "users" ? "active" : ""} onClick={() => setActiveTab("users")}><span>👥</span> Мұғалімдер</button>
-          <button className={activeTab === "payments" ? "active" : ""} onClick={() => setActiveTab("payments")}><span>💳</span> Төлемдер</button>
-          <button className={activeTab === "tariffs" ? "active" : ""} onClick={() => setActiveTab("tariffs")}><span>🏷️</span> Тарифтер</button>
+          <button className={activeTab === "users" ? "active" : ""} onClick={() => setActiveTab("users")}>Мұғалімдер</button>
+          <button className={activeTab === "payments" ? "active" : ""} onClick={() => setActiveTab("payments")}>Төлемдер</button>
+          <button className={activeTab === "tariffs" ? "active" : ""} onClick={() => setActiveTab("tariffs")}>Тарифтер</button>
         </nav>
-        <button className="logout-btn" onClick={() => { localStorage.removeItem("user"); window.location.reload(); }}><span>🚪</span> Шығу</button>
+        <button className="logout-btn" onClick={() => { localStorage.removeItem("user"); window.location.reload(); }}>Шығу</button>
       </aside>
 
       <main className="main-content">
@@ -167,12 +167,11 @@ export default function AdminDashboard() {
           <div className="top-row">
             <h1>Мұғалімдерді басқару</h1>
             <button className={`smart-sort ${isSmartSort ? 'active' : ''}`} onClick={() => setIsSmartSort(!isSmartSort)}>
-              <span>🤖</span> Smart сұрыптау
+              Smart сұрыптау
             </button>
           </div>
 
           <div className="search-box">
-             <span className="search-icon">🔍</span>
              <input 
                type="text" 
                placeholder="Ник, аты, мектеп немесе телефон бойынша іздеу..." 
@@ -183,11 +182,11 @@ export default function AdminDashboard() {
 
           <div className="chips">
             <Chip label="Барлығы" active={filterChip === "all"} onClick={() => setFilterChip("all")} />
-            <Chip label="💎 PRO" active={filterChip === "pro"} onClick={() => setFilterChip("pro")} />
-            <Chip label="⏰ Истекает" active={filterChip === "expiring"} onClick={() => setFilterChip("expiring")} />
-            <Chip label="⚡ Активные" active={filterChip === "active"} onClick={() => setFilterChip("active")} />
-            <Chip label="🚨 Проблемные" active={filterChip === "problematic"} onClick={() => setFilterChip("problematic")} />
-            <Chip label="🏫 Без школы" active={filterChip === "noschool"} onClick={() => setFilterChip("noschool")} />
+            <Chip label="PRO" active={filterChip === "pro"} onClick={() => setFilterChip("pro")} />
+            <Chip label="Аяқталуда" active={filterChip === "expiring"} onClick={() => setFilterChip("expiring")} />
+            <Chip label="Белсенді" active={filterChip === "active"} onClick={() => setFilterChip("active")} />
+            <Chip label="Шұғыл" active={filterChip === "problematic"} onClick={() => setFilterChip("problematic")} />
+            <Chip label="Мектепсіз" active={filterChip === "noschool"} onClick={() => setFilterChip("noschool")} />
           </div>
         </header>
 
@@ -263,9 +262,9 @@ function UserRow({ user, onTogglePro, onDelete }: { user: any, onTogglePro: () =
   
   const getStatusStyle = () => {
     if (user.subscription?.status !== 'ACTIVE') return { color: '#64748b', bg: '#f1f5f9', label: 'Неактивен' };
-    if (daysLeft < 3) return { color: '#e11d48', bg: '#fff1f2', label: 'Шұғыл (🚨)' };
-    if (daysLeft < 7) return { color: '#d97706', bg: '#fffbeb', label: 'Назар аудар (⚠️)' };
-    return { color: '#059669', bg: '#ecfdf5', label: 'Белсенді (🟢)' };
+    if (daysLeft < 3) return { color: '#e11d48', bg: '#fff1f2', label: 'Шұғыл' };
+    if (daysLeft < 7) return { color: '#d97706', bg: '#fffbeb', label: 'Назар аудар' };
+    return { color: '#059669', bg: '#ecfdf5', label: 'Белсенді' };
   };
 
   const style = getStatusStyle();
@@ -284,7 +283,7 @@ function UserRow({ user, onTogglePro, onDelete }: { user: any, onTogglePro: () =
           </div>
           <div>
             <div style={{ fontWeight: 800, fontSize: '1rem', color: '#0f172a' }}>
-              {user.fio || user.username} {user.subscription?.status === 'ACTIVE' && '💎'}
+              {user.fio || user.username} {user.subscription?.status === 'ACTIVE' && '(PRO)'}
             </div>
             <div style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 600 }}>@{user.username} • {user.phone}</div>
           </div>
@@ -331,7 +330,7 @@ function UserRow({ user, onTogglePro, onDelete }: { user: any, onTogglePro: () =
           <button className={`pro-btn ${user.subscription?.status === 'ACTIVE' ? 'active' : ''}`} onClick={onTogglePro}>
             {user.subscription?.status === 'ACTIVE' ? "PRO Өшіру" : "PRO Қосу"}
           </button>
-          <button className="del-btn" onClick={onDelete}>🗑️</button>
+          <button className="del-btn" onClick={onDelete}>Өшіру</button>
         </div>
       </td>
       <style jsx>{`
