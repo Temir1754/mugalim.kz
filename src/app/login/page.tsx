@@ -168,21 +168,47 @@ export default function Login() {
           </Suspense>
         </div>
 
-        <div className="visual-side" style={{ flex: 1, background: "#0A66F0", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-           <div style={{ width: "80%", textAlign: "center", color: "white", zIndex: 2 }}>
-              <h2 style={{ fontSize: "3.5rem", fontWeight: 900, marginBottom: "20px", letterSpacing: "-2px" }}>Қош келдіңіз!</h2>
-              <p style={{ opacity: 0.9, fontSize: "1.2rem", fontWeight: 500, lineHeight: 1.6 }}>Мұғалімдерге арналған ең озық КТЖ/ҚМЖ генераторы мен материалдар каталогы.</p>
-           </div>
-           {/* Abstract shapes for premium look */}
-           <div style={{ position: "absolute", bottom: "-10%", right: "-10%", width: "400px", height: "400px", borderRadius: "50%", background: "rgba(255,255,255,0.05)", zIndex: 1 }}></div>
-           <div style={{ position: "absolute", top: "-5%", left: "-5%", width: "250px", height: "250px", borderRadius: "50%", background: "rgba(255,255,255,0.03)", zIndex: 1 }}></div>
+        <div className="visual-side" style={{ 
+          flex: 1, 
+          background: "#0A66F0", 
+          display: "flex", 
+          alignItems: "center", 
+          justifyContent: "center", 
+          position: "relative", 
+          overflow: "hidden" 
+        }}>
+           {/* Promo Banner Image */}
+           <img 
+              src="https://storage.googleapis.com/static.antigravity.ai/e1f5ef35-3397-431e-82b8-aafb872882a4/96053330-80d8-4f81-80fc-5b51ef948332.png" 
+              alt="Promo Banner" 
+              style={{ 
+                width: "100%", 
+                height: "100%", 
+                objectFit: "cover",
+                position: "absolute",
+                top: 0,
+                left: 0,
+                zIndex: 1
+              }}
+           />
+           
+           {/* Optional Overlay if needed for contrast */}
+           <div style={{ 
+             position: "absolute", 
+             top: 0, 
+             left: 0, 
+             width: "100%", 
+             height: "100%", 
+             background: "linear-gradient(0deg, rgba(10, 102, 240, 0.4) 0%, rgba(10, 102, 240, 0) 100%)",
+             zIndex: 2 
+           }}></div>
         </div>
       </div>
 
       <Footer />
 
       <style jsx>{`
-        @media (max-width: 900px) { .visual-side { display: none ! alienation; } }
+        @media (max-width: 900px) { .visual-side { display: none !important; } }
       `}</style>
     </div>
   );
