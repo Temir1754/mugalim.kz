@@ -182,13 +182,13 @@ export default function Login() {
               src="/images/login-promo.png" 
               alt="Promo Banner" 
               style={{ 
-                width: "100%", 
-                height: "100%", 
-                objectFit: "cover",
-                position: "absolute",
-                top: 0,
-                left: 0,
-                zIndex: 1
+                width: "90%", 
+                height: "auto", 
+                maxHeight: "90%",
+                objectFit: "contain",
+                zIndex: 2,
+                borderRadius: "24px",
+                boxShadow: "0 20px 50px rgba(0,0,0,0.15)"
               }}
            />
            

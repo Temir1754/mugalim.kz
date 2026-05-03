@@ -249,7 +249,15 @@ export default function Register() {
            <img 
              src="/images/login-promo.png" 
              alt="Promo" 
-             style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", zIndex: 1 }} 
+             style={{ 
+               width: "90%", 
+               height: "auto", 
+               maxHeight: "90%",
+               objectFit: "contain",
+               zIndex: 2,
+               borderRadius: "24px",
+               boxShadow: "0 20px 50px rgba(0,0,0,0.15)"
+             }} 
            />
            <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", background: "linear-gradient(0deg, rgba(10,102,240,0.3) 0%, transparent 100%)", zIndex: 2 }}></div>
         </div>
