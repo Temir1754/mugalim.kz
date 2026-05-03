@@ -26,7 +26,7 @@ export default function AdminDashboard() {
 
     setPaymentRequests(JSON.parse(localStorage.getItem("paymentRequests") || "[]"));
     setPlans(JSON.parse(localStorage.getItem("sitePlans") || "[]"));
-    // Загружаем всех пользователей
+    
     let allUsers = JSON.parse(localStorage.getItem("registeredUsers") || "[]");
     if (allUsers.length === 0) {
       allUsers = [
@@ -41,8 +41,6 @@ export default function AdminDashboard() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // 1. Проверка секретного мастер-пароля
     if (login === "admin" && password === "Temir173173") {
       const adminUser = { username: "admin", role: "ADMIN" };
       localStorage.setItem("user", JSON.stringify(adminUser));
@@ -51,7 +49,6 @@ export default function AdminDashboard() {
       return;
     }
 
-    // 2. Проверка через общую базу пользователей (если у юзера роль ADMIN)
     const allUsers = JSON.parse(localStorage.getItem("registeredUsers") || "[]");
     const foundUser = allUsers.find((u: any) => (u.username === login || u.phone === login) && u.password === password);
 
@@ -64,7 +61,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const grantProAccess = (username: string, planName: string = "Pro Мұғалім") => {
+  const grantProAccess = (username: string, planName: string = "PRO Мұғалім") => {
     const allUsers = JSON.parse(localStorage.getItem("registeredUsers") || "[]");
     const userIdx = allUsers.findIndex((u: any) => u.username === username || u.phone === username);
     
@@ -78,13 +75,34 @@ export default function AdminDashboard() {
         status: 'ACTIVE'
       };
       
-      localStorage.setItem("registeredUsers", JSON.stringify(allUsers));
-      setRegisteredUsers(allUsers);
+      saveUsers(allUsers);
+    }
+  };
 
-      const current = JSON.parse(localStorage.getItem("user") || "{}");
-      if (current.username === allUsers[userIdx].username) {
-        localStorage.setItem("user", JSON.stringify(allUsers[userIdx]));
-      }
+  const deactivateSubscription = (username: string) => {
+    if (!confirm(`${username} жазылымын өшіруді растайсыз ба?`)) return;
+
+    const allUsers = JSON.parse(localStorage.getItem("registeredUsers") || "[]");
+    const userIdx = allUsers.findIndex((u: any) => u.username === username);
+
+    if (userIdx !== -1) {
+      allUsers[userIdx].subscription = {
+        ...allUsers[userIdx].subscription,
+        status: 'EXPIRED'
+      };
+      saveUsers(allUsers);
+      alert("Жазылым сәтті өшірілді.");
+    }
+  };
+
+  const saveUsers = (allUsers: any[]) => {
+    localStorage.setItem("registeredUsers", JSON.stringify(allUsers));
+    setRegisteredUsers(allUsers);
+
+    const current = JSON.parse(localStorage.getItem("user") || "{}");
+    const updatedMe = allUsers.find(u => u.username === current.username);
+    if (updatedMe) {
+      localStorage.setItem("user", JSON.stringify(updatedMe));
     }
   };
 
@@ -108,28 +126,10 @@ export default function AdminDashboard() {
           <div style={{ fontSize: "3rem", marginBottom: "20px" }}>🔐</div>
           <h2 style={{ marginBottom: "20px", fontWeight: "800" }}>Админ кіру</h2>
           <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <input 
-              type="text" 
-              placeholder="Логин немесе Телефон" 
-              value={login} 
-              onChange={(e) => setLogin(e.target.value)} 
-              style={{ width: "100%", padding: "16px", borderRadius: "16px", border: "1px solid var(--box-border)", background: "var(--input-bg)", color: "var(--text-main)" }} 
-            />
+            <input type="text" placeholder="Логин немесе Телефон" value={login} onChange={(e) => setLogin(e.target.value)} style={{ width: "100%", padding: "16px", borderRadius: "16px", border: "1px solid var(--box-border)", background: "var(--input-bg)", color: "var(--text-main)" }} />
             <div style={{ position: "relative" }}>
-              <input 
-                type={showPassword ? "text" : "password"} 
-                placeholder="Құпия сөз" 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                style={{ width: "100%", padding: "16px", borderRadius: "16px", border: "1px solid var(--box-border)", background: "var(--input-bg)", color: "var(--text-main)" }} 
-              />
-              <button 
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{ position: "absolute", right: "15px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: "1.2rem", opacity: 0.5 }}
-              >
-                {showPassword ? "👁️" : "🙈"}
-              </button>
+              <input type={showPassword ? "text" : "password"} placeholder="Құпия сөз" value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: "100%", padding: "16px", borderRadius: "16px", border: "1px solid var(--box-border)", background: "var(--input-bg)", color: "var(--text-main)" }} />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: "15px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: "1.2rem", opacity: 0.5 }}>{showPassword ? "👁️" : "🙈"}</button>
             </div>
             {error && <p style={{ color: "#dc3545", fontSize: "0.85rem" }}>{error}</p>}
             <button type="submit" style={{ padding: "18px", background: "var(--primary-blue)", color: "white", border: "none", borderRadius: "16px", fontWeight: "800", cursor: "pointer" }}>Кіру</button>
@@ -139,30 +139,35 @@ export default function AdminDashboard() {
     );
   }
 
+  const filteredUsers = registeredUsers.filter(u => 
+    u.username?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    u.phone?.includes(searchQuery)
+  );
+
   return (
     <div style={{ display: "flex", minHeight: "100vh", backgroundColor: "var(--bg-color)" }}>
       <aside style={{ width: "280px", background: "var(--card-bg)", borderRight: "1px solid var(--box-border)", padding: "30px 20px", position: "fixed", height: "100vh" }}>
-        <h2 style={{ marginBottom: "30px" }}>Админ Панель</h2>
+        <h2 style={{ marginBottom: "30px", fontWeight: "900" }}>Админ Панель</h2>
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <button onClick={() => setActiveTab("payments")} style={{ padding: "12px 15px", borderRadius: "12px", border: "none", background: activeTab === "payments" ? "var(--box-tint)" : "transparent", textAlign: "left", cursor: "pointer", fontWeight: "600" }}>💳 Төлемдер</button>
-          <button onClick={() => setActiveTab("users")} style={{ padding: "12px 15px", borderRadius: "12px", border: "none", background: activeTab === "users" ? "var(--box-tint)" : "transparent", textAlign: "left", cursor: "pointer", fontWeight: "600" }}>👥 Мұғалімдер</button>
-          <button onClick={() => setActiveTab("tariffs")} style={{ padding: "12px 15px", borderRadius: "12px", border: "none", background: activeTab === "tariffs" ? "var(--box-tint)" : "transparent", textAlign: "left", cursor: "pointer", fontWeight: "600" }}>🏷️ Тарифтер</button>
-          <button onClick={() => setActiveTab("moderation")} style={{ padding: "12px 15px", borderRadius: "12px", border: "none", background: activeTab === "moderation" ? "var(--box-tint)" : "transparent", textAlign: "left", cursor: "pointer", fontWeight: "600" }}>📂 Модерация</button>
+          <button onClick={() => setActiveTab("payments")} style={navBtnStyle(activeTab === "payments")}>Төлемдер</button>
+          <button onClick={() => setActiveTab("users")} style={navBtnStyle(activeTab === "users")}>Мұғалімдер</button>
+          <button onClick={() => setActiveTab("tariffs")} style={navBtnStyle(activeTab === "tariffs")}>Тарифтер</button>
         </div>
       </aside>
 
       <main style={{ flex: 1, marginLeft: "280px", padding: "40px" }}>
-        <div style={{ maxWidth: "1000px", margin: "0 auto" }}>
+        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
+          
           {activeTab === "payments" && (
             <>
-              <h1>Төлемдерді растау</h1>
-              <div style={{ background: "var(--card-bg)", borderRadius: "24px", border: "1px solid var(--box-border)", overflow: "hidden", marginTop: "30px" }}>
+              <h1 style={{ fontWeight: "900", marginBottom: "30px" }}>Төлемдерді растау</h1>
+              <div style={{ background: "var(--card-bg)", borderRadius: "24px", border: "1px solid var(--box-border)", overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ background: "var(--box-tint)", textAlign: "left" }}>
-                      <th style={{ padding: "15px 20px", fontSize: "0.8rem", color: "#888" }}>МҰҒАЛІМ</th>
-                      <th style={{ padding: "15px 20px", fontSize: "0.8rem", color: "#888" }}>ТАРИФ</th>
-                      <th style={{ padding: "15px 20px", fontSize: "0.8rem", color: "#888" }}>ӘРЕКЕТ</th>
+                      <th style={thStyle}>МҰҒАЛІМ</th>
+                      <th style={thStyle}>ТАРИФ</th>
+                      <th style={thStyle}>ӘРЕКЕТ</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -171,10 +176,10 @@ export default function AdminDashboard() {
                     ) : (
                       paymentRequests.filter(r => r.status === 'PENDING').map(req => (
                         <tr key={req.id} style={{ borderBottom: "1px solid var(--box-border)" }}>
-                          <td style={{ padding: "15px 20px" }}><b>{req.username}</b><br/><small>{req.phone}</small></td>
-                          <td style={{ padding: "15px 20px" }}>{req.plan}<br/><b>{req.price}</b></td>
-                          <td style={{ padding: "15px 20px" }}>
-                            <button onClick={() => handleApprovePayment(req.id)} style={{ padding: "8px 16px", background: "var(--primary-blue)", color: "white", border: "none", borderRadius: "10px", cursor: "pointer", fontWeight: "700" }}>Растау</button>
+                          <td style={tdStyle}><b>{req.username}</b><br/><small>{req.phone}</small></td>
+                          <td style={tdStyle}>{req.plan}<br/><b>{req.price}</b></td>
+                          <td style={tdStyle}>
+                            <button onClick={() => handleApprovePayment(req.id)} style={btnStyle(true)}>Растау</button>
                           </td>
                         </tr>
                       ))
@@ -187,8 +192,8 @@ export default function AdminDashboard() {
 
           {activeTab === "users" && (
             <>
-              <h1>Мұғалімдерді басқару</h1>
-              <div style={{ marginTop: "30px", marginBottom: "20px" }}>
+              <h1 style={{ fontWeight: "900", marginBottom: "30px" }}>Мұғалімдерді басқару</h1>
+              <div style={{ marginBottom: "20px" }}>
                 <input 
                   type="text" 
                   placeholder="Телефон немесе аты бойынша іздеу..." 
@@ -202,34 +207,46 @@ export default function AdminDashboard() {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ background: "var(--box-tint)", textAlign: "left" }}>
-                      <th style={{ padding: "15px 20px", fontSize: "0.8rem", color: "#888" }}>АТЫ-ЖӨНІ / ТЕЛЕФОН</th>
-                      <th style={{ padding: "15px 20px", fontSize: "0.8rem", color: "#888" }}>ТАРИФ КҮЙІ</th>
-                      <th style={{ padding: "15px 20px", fontSize: "0.8rem", color: "#888" }}>ӘРЕКЕТ</th>
+                      <th style={thStyle}>АТЫ-ЖӨНІ / ТЕЛЕФОН</th>
+                      <th style={thStyle}>ТАРИФ КҮЙІ</th>
+                      <th style={thStyle}>ӘРЕКЕТ</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {registeredUsers.filter(u => u.username?.toLowerCase().includes(searchQuery.toLowerCase()) || u.phone?.includes(searchQuery)).length === 0 ? (
+                    {filteredUsers.length === 0 ? (
                       <tr><td colSpan={3} style={{ padding: "40px", textAlign: "center", color: "#888" }}>Мұғалімдер табылмады</td></tr>
                     ) : (
-                      registeredUsers.filter(u => u.username?.toLowerCase().includes(searchQuery.toLowerCase()) || u.phone?.includes(searchQuery)).map((u, i) => (
+                      filteredUsers.map((u, i) => (
                         <tr key={i} style={{ borderBottom: "1px solid var(--box-border)" }}>
-                          <td style={{ padding: "15px 20px" }}>
+                          <td style={tdStyle}>
                             <b>{u.username}</b><br/><small>{u.phone}</small>
                           </td>
-                          <td style={{ padding: "15px 20px" }}>
+                          <td style={tdStyle}>
                             {u.subscription?.status === 'ACTIVE' ? (
-                              <span style={{ color: "#34C759", fontWeight: "700" }}>PRO ({u.subscription.endDate})</span>
+                              <span style={{ color: "#34C759", fontWeight: "700" }}>
+                                {u.subscription.plan} ({u.subscription.endDate})
+                              </span>
                             ) : (
-                              <span style={{ color: "#888" }}>Стандарт</span>
+                              <span style={{ color: "#888" }}>Тегін тариф</span>
                             )}
                           </td>
-                          <td style={{ padding: "15px 20px" }}>
-                            <button 
-                              onClick={() => { grantProAccess(u.username); alert("PRO қосылды!"); }} 
-                              style={{ padding: "8px 16px", background: u.subscription?.status === 'ACTIVE' ? "#eee" : "var(--primary-blue)", color: u.subscription?.status === 'ACTIVE' ? "#888" : "white", border: "none", borderRadius: "10px", cursor: "pointer", fontWeight: "700" }}
-                            >
-                              PRO қосу
-                            </button>
+                          <td style={tdStyle}>
+                            <div style={{ display: "flex", gap: "8px" }}>
+                              <button 
+                                onClick={() => grantProAccess(u.username)} 
+                                style={btnStyle(u.subscription?.status !== 'ACTIVE', "var(--primary-blue)")}
+                              >
+                                PRO қосу
+                              </button>
+                              {u.subscription?.status === 'ACTIVE' && (
+                                <button 
+                                  onClick={() => deactivateSubscription(u.username)} 
+                                  style={btnStyle(true, "#ff4d4f")}
+                                >
+                                  Өшіру
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -242,23 +259,53 @@ export default function AdminDashboard() {
 
           {activeTab === "tariffs" && (
             <>
-              <h1>Тарифтерді өңдеу</h1>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "20px", marginTop: "30px" }}>
+              <h1 style={{ fontWeight: "900", marginBottom: "30px" }}>Тарифтерді өңдеу</h1>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "20px" }}>
                 {plans.map((plan, idx) => (
                   <div key={idx} style={{ background: "var(--card-bg)", padding: "25px", borderRadius: "24px", border: "1px solid var(--box-border)" }}>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "15px" }}>
-                      <div><label style={{ fontSize: "0.8rem", display: "block" }}>Тариф атауы</label><input type="text" value={plan.title} onChange={(e) => { const p = [...plans]; p[idx].title = e.target.value; setPlans(p); localStorage.setItem("sitePlans", JSON.stringify(p)); }} style={{ width: "100%", padding: "10px", borderRadius: "10px", border: "1px solid var(--box-border)" }} /></div>
-                      <div><label style={{ fontSize: "0.8rem", display: "block" }}>Бағасы</label><input type="text" value={plan.price} onChange={(e) => { const p = [...plans]; p[idx].price = e.target.value; setPlans(p); localStorage.setItem("sitePlans", JSON.stringify(p)); }} style={{ width: "100%", padding: "10px", borderRadius: "10px", border: "1px solid var(--box-border)" }} /></div>
+                      <div><label style={{ fontSize: "0.8rem", display: "block", marginBottom: "5px" }}>Тариф атауы</label><input type="text" value={plan.title} onChange={(e) => { const p = [...plans]; p[idx].title = e.target.value; setPlans(p); localStorage.setItem("sitePlans", JSON.stringify(p)); }} style={inputStyle} /></div>
+                      <div><label style={{ fontSize: "0.8rem", display: "block", marginBottom: "5px" }}>Бағасы</label><input type="text" value={plan.price} onChange={(e) => { const p = [...plans]; p[idx].price = e.target.value; setPlans(p); localStorage.setItem("sitePlans", JSON.stringify(p)); }} style={inputStyle} /></div>
                     </div>
-                    <label style={{ fontSize: "0.8rem", display: "block" }}>Мүмкіндіктер</label>
-                    <textarea value={plan.features.join("\n")} onChange={(e) => { const p = [...plans]; p[idx].features = e.target.value.split("\n"); setPlans(p); localStorage.setItem("sitePlans", JSON.stringify(p)); }} style={{ width: "100%", padding: "10px", borderRadius: "10px", border: "1px solid var(--box-border)", height: "80px" }} />
+                    <label style={{ fontSize: "0.8rem", display: "block", marginBottom: "5px" }}>Мүмкіндіктер</label>
+                    <textarea value={plan.features.join("\n")} onChange={(e) => { const p = [...plans]; p[idx].features = e.target.value.split("\n"); setPlans(p); localStorage.setItem("sitePlans", JSON.stringify(p)); }} style={{ ...inputStyle, height: "80px", resize: "none" }} />
                   </div>
                 ))}
               </div>
             </>
           )}
+
         </div>
       </main>
     </div>
   );
 }
+
+const navBtnStyle = (active: boolean) => ({
+  padding: "12px 15px",
+  borderRadius: "12px",
+  border: "none",
+  background: active ? "var(--box-tint)" : "transparent",
+  color: active ? "var(--primary-blue)" : "inherit",
+  textAlign: "left" as const,
+  cursor: "pointer",
+  fontWeight: "700",
+  fontSize: "0.95rem"
+});
+
+const thStyle = { padding: "15px 20px", fontSize: "0.75rem", color: "#888", fontWeight: "900", letterSpacing: "0.5px" };
+const tdStyle = { padding: "15px 20px", fontSize: "0.95rem" };
+
+const btnStyle = (active: boolean, color: string = "var(--primary-blue)") => ({
+  padding: "8px 16px",
+  background: active ? color : "#f0f2f5",
+  color: active ? "white" : "#888",
+  border: "none",
+  borderRadius: "10px",
+  cursor: active ? "pointer" : "default",
+  fontWeight: "700",
+  fontSize: "0.85rem",
+  transition: "all 0.2s"
+});
+
+const inputStyle = { width: "100%" as const, padding: "12px", borderRadius: "10px", border: "1px solid var(--box-border)", background: "var(--input-bg)", fontSize: "0.95rem" };
