@@ -26,15 +26,23 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("private");
 
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch("/api/admin/users");
+      const data = await res.json();
+      if (Array.isArray(data)) setRegisteredUsers(data);
+    } catch (err) {
+      console.error("Fetch error:", err);
+    }
+  };
+
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
       const user = JSON.parse(savedUser);
       if (user.role === "ADMIN") setIsAdmin(true);
     }
-
-    const allUsers = JSON.parse(localStorage.getItem("registeredUsers") || "[]");
-    setRegisteredUsers(allUsers);
+    fetchUsers();
   }, []);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -47,35 +55,29 @@ export default function AdminDashboard() {
     }
   };
 
-  const saveUsers = (users: any[]) => {
-    localStorage.setItem("registeredUsers", JSON.stringify(users));
-    setRegisteredUsers(users);
-  };
-
-  const approveRequest = (username: string) => {
-    const users = [...registeredUsers];
-    const idx = users.findIndex(u => u.username === username);
-    if (idx !== -1) {
-      const user = users[idx];
-      const planName = user.role === "SCHOOL_ADMIN" ? "Мектеп" : "Pro Мұғалім";
-      const end = new Date();
-      end.setMonth(end.getMonth() + 1);
-      users[idx].subscription = {
-        status: 'ACTIVE',
-        plan: planName,
-        startDate: new Date().toLocaleDateString('ru-RU'),
-        endDate: end.toLocaleDateString('ru-RU')
-      };
-      saveUsers(users);
+  const approveRequest = async (username: string) => {
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, action: "APPROVE" }),
+      });
+      if (res.ok) fetchUsers();
+    } catch (err) {
+      console.error("Approve error:", err);
     }
   };
 
-  const rejectRequest = (username: string) => {
-    const users = [...registeredUsers];
-    const idx = users.findIndex(u => u.username === username);
-    if (idx !== -1) {
-      users[idx].subscription = { status: 'EXPIRED', plan: 'Базалық' };
-      saveUsers(users);
+  const rejectRequest = async (username: string) => {
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, action: "REJECT" }),
+      });
+      if (res.ok) fetchUsers();
+    } catch (err) {
+      console.error("Reject error:", err);
     }
   };
 
