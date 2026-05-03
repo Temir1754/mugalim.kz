@@ -179,7 +179,7 @@ export default function Login() {
         }}>
            {/* Promo Banner Image */}
            <img 
-              src="https://storage.googleapis.com/static.antigravity.ai/e1f5ef35-3397-431e-82b8-aafb872882a4/96053330-80d8-4f81-80fc-5b51ef948332.png" 
+              src="/images/login-promo.png" 
               alt="Promo Banner" 
               style={{ 
                 width: "100%", 
