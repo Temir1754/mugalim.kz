@@ -123,7 +123,6 @@ export default function AdminDashboard() {
     return (
       <div className="login-screen">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="login-card">
-          <div style={{ marginBottom: "20px", fontWeight: 900, color: "#0f172a", fontSize: "1.2rem" }}>ADMIN</div>
           <h2>Админ Панель</h2>
           <form onSubmit={handleLogin}>
             <input type="text" placeholder="Логин" value={login} onChange={(e) => setLogin(e.target.value)} />

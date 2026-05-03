@@ -62,7 +62,7 @@ export default function Navbar() {
           {user ? (
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
               <Link href={user.role === "SELLER" ? "/seller" : "/client"} style={{ textDecoration: "none", color: "var(--text-main)", fontSize: "0.9rem", fontWeight: "600" }}>
-                {user.username}
+                {user.username === "admin" ? "Профиль" : user.username}
               </Link>
               <button 
                 onClick={handleLogout}

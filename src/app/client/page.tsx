@@ -72,7 +72,9 @@ export default function ClientDashboard() {
           <div className="inner-container" style={{ maxWidth: isSchoolAdmin ? "100%" : "600px", margin: isSchoolAdmin ? "0" : "40px auto" }}>
             <div className="form-card" style={{ textAlign: "center", padding: "40px", position: "relative" }}>
               
-              <h1 style={{ fontSize: "1.8rem", fontWeight: "900", marginBottom: "5px" }}>{user.fio || user.username}</h1>
+              <h1 style={{ fontSize: "1.8rem", fontWeight: "900", marginBottom: "5px" }}>
+                {(user.username === "admin" || !user.fio) ? "Жеке кабинет" : user.fio}
+              </h1>
               <p style={{ color: "var(--text-secondary)", marginBottom: "10px" }}>{user.phone} • {user.role === 'SCHOOL_ADMIN' ? 'Оқу ісінің меңгерушісі' : 'Мұғалім'}</p>
               
               {isSchoolAdmin && (
