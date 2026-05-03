@@ -14,6 +14,9 @@ export default function AdminDashboard() {
   const [plans, setPlans] = useState<any[]>([]);
   const [registeredUsers, setRegisteredUsers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
@@ -30,9 +33,9 @@ export default function AdminDashboard() {
     let allUsers = JSON.parse(localStorage.getItem("registeredUsers") || "[]");
     if (allUsers.length === 0) {
       allUsers = [
-        { username: "zavuch", password: "password", phone: "+7 (777) 111-22-33", role: "SCHOOL_ADMIN", subscription: { status: "ACTIVE", plan: "Мектеп", endDate: "01.06.2026" } },
-        { username: "teacher", password: "password", phone: "+7 (777) 444-55-66", role: "CLIENT", subscription: { status: "EXPIRED", plan: "Базалық", endDate: "01.05.2026" } },
-        { username: "avtor", password: "password", phone: "+7 (777) 888-99-00", role: "SELLER" }
+        { username: "zavuch", fio: "Завуч Тест", password: "password", phone: "+7 (777) 111-22-33", role: "SCHOOL_ADMIN", schoolName: "№1 мектеп-лицей", subscription: { status: "ACTIVE", plan: "Мектеп", endDate: "01.06.2026" } },
+        { username: "teacher", fio: "Мұғалім Тест", password: "password", phone: "+7 (777) 444-55-66", role: "CLIENT", schoolName: "№159 гимназия", subscription: { status: "EXPIRED", plan: "Базалық", endDate: "01.05.2026" } },
+        { username: "avtor", fio: "Автор Тест", password: "password", phone: "+7 (777) 888-99-00", role: "SELLER", schoolName: "TAMOS Education" }
       ];
       localStorage.setItem("registeredUsers", JSON.stringify(allUsers));
     }
@@ -119,6 +122,41 @@ export default function AdminDashboard() {
     alert("Төлем сәтті расталды!");
   };
 
+  const requestSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedUsers = [...registeredUsers].sort((a, b) => {
+    if (!sortConfig) return 0;
+    
+    let aVal: any = a[sortConfig.key];
+    let bVal: any = b[sortConfig.key];
+
+    // Special cases
+    if (sortConfig.key === 'plan') {
+      aVal = a.subscription?.plan || 'Тегін';
+      bVal = b.subscription?.plan || 'Тегін';
+    } else if (sortConfig.key === 'expiry') {
+      aVal = a.subscription?.endDate || '00.00.0000';
+      bVal = b.subscription?.endDate || '00.00.0000';
+    }
+
+    if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const filteredUsers = sortedUsers.filter(u => 
+    u.username?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    u.fio?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    u.phone?.includes(searchQuery) ||
+    u.schoolName?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (!isAdmin) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-color)" }}>
@@ -139,14 +177,9 @@ export default function AdminDashboard() {
     );
   }
 
-  const filteredUsers = registeredUsers.filter(u => 
-    u.username?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    u.phone?.includes(searchQuery)
-  );
-
   return (
     <div style={{ display: "flex", minHeight: "100vh", backgroundColor: "var(--bg-color)" }}>
-      <aside style={{ width: "280px", background: "var(--card-bg)", borderRight: "1px solid var(--box-border)", padding: "30px 20px", position: "fixed", height: "100vh" }}>
+      <aside style={{ width: "260px", background: "var(--card-bg)", borderRight: "1px solid var(--box-border)", padding: "30px 20px", position: "fixed", height: "100vh" }}>
         <h2 style={{ marginBottom: "30px", fontWeight: "900" }}>Админ Панель</h2>
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           <button onClick={() => setActiveTab("payments")} style={navBtnStyle(activeTab === "payments")}>Төлемдер</button>
@@ -155,8 +188,8 @@ export default function AdminDashboard() {
         </div>
       </aside>
 
-      <main style={{ flex: 1, marginLeft: "280px", padding: "40px" }}>
-        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
+      <main style={{ flex: 1, marginLeft: "260px", padding: "40px" }}>
+        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
           
           {activeTab === "payments" && (
             <>
@@ -196,7 +229,7 @@ export default function AdminDashboard() {
               <div style={{ marginBottom: "20px" }}>
                 <input 
                   type="text" 
-                  placeholder="Телефон немесе аты бойынша іздеу..." 
+                  placeholder="Ник, аты, мектеп немесе телефон бойынша іздеу..." 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   style={{ width: "100%", padding: "15px", borderRadius: "15px", border: "1px solid var(--box-border)", background: "var(--card-bg)" }}
@@ -207,44 +240,40 @@ export default function AdminDashboard() {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ background: "var(--box-tint)", textAlign: "left" }}>
-                      <th style={thStyle}>АТЫ-ЖӨНІ / ТЕЛЕФОН</th>
-                      <th style={thStyle}>ТАРИФ КҮЙІ</th>
+                      <th style={thSortStyle} onClick={() => requestSort('fio')}>АТЫ-ЖӨНІ / НИК {sortIcon('fio', sortConfig)}</th>
+                      <th style={thSortStyle} onClick={() => requestSort('schoolName')}>МЕКТЕП {sortIcon('schoolName', sortConfig)}</th>
+                      <th style={thSortStyle} onClick={() => requestSort('plan')}>ТАРИФ ПЕН МЕРЗІМІ {sortIcon('plan', sortConfig)}</th>
                       <th style={thStyle}>ӘРЕКЕТ</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredUsers.length === 0 ? (
-                      <tr><td colSpan={3} style={{ padding: "40px", textAlign: "center", color: "#888" }}>Мұғалімдер табылмады</td></tr>
+                      <tr><td colSpan={4} style={{ padding: "40px", textAlign: "center", color: "#888" }}>Мұғалімдер табылмады</td></tr>
                     ) : (
                       filteredUsers.map((u, i) => (
                         <tr key={i} style={{ borderBottom: "1px solid var(--box-border)" }}>
                           <td style={tdStyle}>
-                            <b>{u.username}</b><br/><small>{u.phone}</small>
+                            <b>{u.fio || u.username}</b><br/>
+                            <small style={{ color: "#888" }}>@{u.username} • {u.phone}</small>
+                          </td>
+                          <td style={tdStyle}>
+                            <div style={{ fontSize: "0.85rem", color: "#666" }}>{u.schoolName || "Көрсетілмеген"}</div>
                           </td>
                           <td style={tdStyle}>
                             {u.subscription?.status === 'ACTIVE' ? (
-                              <span style={{ color: "#34C759", fontWeight: "700" }}>
-                                {u.subscription.plan} ({u.subscription.endDate})
-                              </span>
+                              <div>
+                                <span style={{ color: "#34C759", fontWeight: "700", display: "block" }}>{u.subscription.plan}</span>
+                                <small style={{ color: "#ff4d4f", fontWeight: "600" }}>{u.subscription.endDate} дейін</small>
+                              </div>
                             ) : (
                               <span style={{ color: "#888" }}>Тегін тариф</span>
                             )}
                           </td>
                           <td style={tdStyle}>
                             <div style={{ display: "flex", gap: "8px" }}>
-                              <button 
-                                onClick={() => grantProAccess(u.username)} 
-                                style={btnStyle(u.subscription?.status !== 'ACTIVE', "var(--primary-blue)")}
-                              >
-                                PRO қосу
-                              </button>
+                              <button onClick={() => grantProAccess(u.username)} style={btnStyle(u.subscription?.status !== 'ACTIVE', "var(--primary-blue)")}>PRO</button>
                               {u.subscription?.status === 'ACTIVE' && (
-                                <button 
-                                  onClick={() => deactivateSubscription(u.username)} 
-                                  style={btnStyle(true, "#ff4d4f")}
-                                >
-                                  Өшіру
-                                </button>
+                                <button onClick={() => deactivateSubscription(u.username)} style={btnStyle(true, "#ff4d4f")}>Өшіру</button>
                               )}
                             </div>
                           </td>
@@ -281,6 +310,11 @@ export default function AdminDashboard() {
   );
 }
 
+const sortIcon = (key: string, config: any) => {
+  if (!config || config.key !== key) return "↕️";
+  return config.direction === 'asc' ? "🔼" : "🔽";
+};
+
 const navBtnStyle = (active: boolean) => ({
   padding: "12px 15px",
   borderRadius: "12px",
@@ -293,18 +327,19 @@ const navBtnStyle = (active: boolean) => ({
   fontSize: "0.95rem"
 });
 
-const thStyle = { padding: "15px 20px", fontSize: "0.75rem", color: "#888", fontWeight: "900", letterSpacing: "0.5px" };
+const thStyle = { padding: "15px 20px", fontSize: "0.7rem", color: "#888", fontWeight: "900", letterSpacing: "0.5px" };
+const thSortStyle = { ...thStyle, cursor: "pointer", userSelect: "none" as const };
 const tdStyle = { padding: "15px 20px", fontSize: "0.95rem" };
 
 const btnStyle = (active: boolean, color: string = "var(--primary-blue)") => ({
-  padding: "8px 16px",
+  padding: "8px 12px",
   background: active ? color : "#f0f2f5",
   color: active ? "white" : "#888",
   border: "none",
   borderRadius: "10px",
   cursor: active ? "pointer" : "default",
   fontWeight: "700",
-  fontSize: "0.85rem",
+  fontSize: "0.8rem",
   transition: "all 0.2s"
 });
 
