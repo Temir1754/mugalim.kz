@@ -3,6 +3,20 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
+// Helper for date calculations
+const getDaysDiff = (dateStr: string) => {
+  if (!dateStr) return -999;
+  try {
+    const [d, m, y] = dateStr.split('.').map(Number);
+    const end = new Date(y, m - 1, d);
+    const now = new Date();
+    const diff = end.getTime() - now.getTime();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  } catch (e) {
+    return -999;
+  }
+};
+
 export default function AdminDashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [password, setPassword] = useState("");
@@ -121,19 +135,16 @@ export default function AdminDashboard() {
       </header>
 
       <main className="content">
-        {/* PRIVATE SCHOOLS */}
         <Section title="Жекеменшік мектеп">
           <SubSection title="Мұғалімдер" users={groups.privateTeachers} onApprove={approveRequest} onReject={rejectRequest} />
           <SubSection title="Оқу ісінің меңгерушісі" users={groups.privateAdmins} onApprove={approveRequest} onReject={rejectRequest} />
         </Section>
 
-        {/* STATE SCHOOLS */}
         <Section title="Мемлекеттік мектеп">
           <SubSection title="Мұғалімдер" users={groups.stateTeachers} onApprove={approveRequest} onReject={rejectRequest} />
           <SubSection title="Оқу ісінің меңгерушісі" users={groups.stateAdmins} onApprove={approveRequest} onReject={rejectRequest} />
         </Section>
 
-        {/* SELLERS */}
         <Section title="Сатушы">
           <SellerTable users={groups.sellers} />
         </Section>
@@ -223,7 +234,7 @@ function SubSection({ title, users, onApprove, onReject }: any) {
         .custom-table th { background: #f8fafc; padding: 16px 20px; text-align: left; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #f1f5f9; white-space: nowrap; }
         .custom-table td { padding: 16px 20px; border-bottom: 1px solid #f8fafc; vertical-align: middle; }
         
-        .tariff-badge { padding: 4px 10px; borderRadius: 8px; font-weight: 800; font-size: 0.7rem; background: #f1f5f9; color: #64748b; }
+        .tariff-badge { padding: 4px 10px; border-radius: 8px; font-weight: 800; font-size: 0.7rem; background: #f1f5f9; color: #64748b; }
         .tariff-badge.pro { background: #fffbeb; color: #d97706; }
         
         .approve-btn { padding: 6px 12px; border-radius: 8px; border: none; background: #fef08a; color: #854d0e; font-weight: 800; font-size: 0.75rem; cursor: pointer; transition: 0.2s; }
