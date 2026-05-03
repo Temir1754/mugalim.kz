@@ -9,11 +9,9 @@ import Footer from "@/components/Footer";
 export default function Register() {
   const router = useRouter();
   const { t } = useLanguage();
-  const [role, setRole] = useState("CLIENT"); // CLIENT, SELLER, SCHOOL_ADMIN
+  const [role, setRole] = useState("CLIENT"); 
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
-  const [usernameAvailable, setUsernameAvailable] = useState(true);
-  const [usernameChecking, setUsernameChecking] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -31,26 +29,18 @@ export default function Register() {
 
   const specialties = [
     "Қазақ тілі", "Орыс тілі", "Қазақ әдебиеті", "Орыс әдебиеті", "Әдебиеттік оқу", "Шетел тілі",
-    "Математика", "Алгебра", "Геометрия",
-    "Жаратылыстану", "Биология", "Физика", "Химия", "География",
-    "Қазақстан тарихы", "Дүниежүзі тарихы", "Құқық негіздері", "Адам. Қоғам. Құқық",
-    "Информатика",
-    "Көркем еңбек", "Технология", "Еңбекке баулу", "Бейнелеу өнері", "Музыка",
-    "Сынып жетекші", "Мектеп әкімшілігі"
+    "Математика", "Алгебра", "Геометрия", "Жаратылыстану", "Биология", "Физика", "Химия", "География",
+    "Қазақстан тарихы", "Дүниежүзі тарихы", "Информатика", "Музыка", "Сынып жетекші"
   ];
 
   const schoolsData: Record<string, Record<string, string[]>> = {
     "Алматы": {
-      "Мемлекеттік": ["№1 мектеп-гимназия", "№2 лицей", "№159 гимназия", "№178 лицей", "№173 мектеп", "№39 мамандандырылған лицей", "№92 мамандандырылған лицей", "№134 лицей"],
-      "Жекеменшік": ["TAMOS Education", "Haileybury Almaty", "Quantum STEM School", "NGS (New Generation School)", "Мирас", "Шоқан Уәлиханов атындағы мектеп", "Galaxy International School"]
+      "Мемлекеттік": ["№1 мектеп-гимназия", "№159 гимназия", "№178 лицей", "№173 мектеп"],
+      "Жекеменшік": ["TAMOS Education", "Haileybury Almaty", "Quantum STEM School", "NGS"]
     },
     "Астана": {
-      "Мемлекеттік": ["№1 мектеп", "№17 гимназия", "№66 мектеп-лицей", "№81 «Astana English School»", "№3 лицей", "№60 мектеп-лицей"],
-      "Жекеменшік": ["Nur-Orda", "Spectrum International School", "Haileybury Astana", "BINOM School", "Seed School", "IQanat High School of Burabay"]
-    },
-    "Шымкент": {
-      "Мемлекеттік": ["№1 мектеп", "№7 гимназия", "№12 лицей", "№24 мектеп", "№90 мектеп-лицей"],
-      "Жекеменшік": ["Мансұр", "Орда", "Арофат", "Ақ-Жол", "Төле би"]
+      "Мемлекеттік": ["№17 гимназия", "№66 мектеп-лицей", "№81 «Astana English School»"],
+      "Жекеменшік": ["Nur-Orda", "Spectrum International School", "BINOM School"]
     }
   };
 
@@ -70,27 +60,10 @@ export default function Register() {
     return formatted;
   };
 
-  const checkUsername = async (name: string) => {
-    if (name.length < 3) return;
-    setUsernameChecking(true);
-    try {
-      const res = await fetch(`/api/auth/check-username?username=${name}`);
-      const data = await res.json();
-      setUsernameAvailable(data.available);
-      if (!data.available) setError("Бұл логин бос емес");
-      else setError("");
-    } catch (e) { console.error(e); }
-    finally { setUsernameChecking(false); }
-  };
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     let { name, value } = e.target;
     if (name === "phone") value = formatPhone(value);
-    if (name === "fio") value = value.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-    if (name === "username") {
-      value = value.toLowerCase().replace(/[^a-z0-9_]/g, ""); 
-      checkUsername(value);
-    }
+    if (name === "username") value = value.toLowerCase().replace(/[^a-z0-9_]/g, ""); 
     setFormData(prev => ({ ...prev, [name]: value }));
     setError("");
   };
@@ -100,17 +73,13 @@ export default function Register() {
       setError("Аты-жөніңіз бен телефон нөмірін толық толтырыңыз");
       return;
     }
-    if (step === 2) {
-      if ((role === 'CLIENT' || role === 'SCHOOL_ADMIN') && (!formData.region || !formData.schoolName)) {
-        setError("Барлық өрістерді толтырыңыз");
-        return;
-      }
+    if (step === 2 && (role !== 'SELLER' && (!formData.region || !formData.schoolName))) {
+      setError("Барлық өрістерді толтырыңыз");
+      return;
     }
     setStep(step + 1);
     setError("");
   };
-
-  const prevStep = () => setStep(step - 1);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,131 +91,186 @@ export default function Register() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...formData, role }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Тіркелу қатесі");
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Тіркелу қатесі");
+      }
       window.location.href = "/login?registered=true";
     } catch (err: any) { setError(err.message); }
     finally { setIsLoading(false); }
   };
 
+  const inputStyle = {
+    width: "100%",
+    padding: "14px 18px",
+    borderRadius: "14px",
+    border: "1px solid #e2e8f0",
+    background: "#f8fafc",
+    fontSize: "0.95rem",
+    outline: "none",
+    boxSizing: "border-box" as const,
+    fontFamily: "sans-serif",
+    transition: "0.2s"
+  };
+
   return (
-    <div style={{ background: "var(--bg-main)" }}>
-      <div className="split-screen">
-        <div className="form-side">
-          <div className="wrapper">
-            <div className="header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "15px" }}>
-              <h1 style={{ margin: 0, lineHeight: "1.1" }}>Жұмысты<br/>бастайық</h1>
-              <p style={{ fontSize: "0.8rem", color: "#8898aa", textAlign: "right", margin: 0, lineHeight: "1.4", paddingBottom: "4px" }}>Тіркелу үшін 3 қадамнан<br/>өтіңіз</p>
+    <div style={{ background: "white", minHeight: "100vh", fontFamily: "sans-serif" }}>
+      <div style={{ display: "flex", minHeight: "100vh" }}>
+        {/* Left Side: Form */}
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px" }}>
+          <div style={{ width: "100%", maxWidth: "440px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "30px" }}>
+              <div>
+                <h1 style={{ margin: 0, fontSize: "2rem", fontWeight: 900, letterSpacing: "-1px" }}>Тіркелу</h1>
+                <p style={{ margin: "5px 0 0", color: "#64748b", fontWeight: 600, fontSize: "0.9rem" }}>{step}-ші қадам: {step === 1 ? 'Жеке мәліметтер' : step === 2 ? 'Мектепті таңдау' : 'Аккаунт ашу'}</p>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#cbd5e1", letterSpacing: "1px" }}>{step}/3</span>
+              </div>
             </div>
 
-            <div className="steps-modern">
-              <span className={step >= 1 ? 'active' : ''}>1. Ақпарат</span>
-              <span className={step >= 2 ? 'active' : ''}>2. Мектеп</span>
-              <span className={step >= 3 ? 'active' : ''}>3. Аккаунт</span>
-            </div>
-
-            <div className="switcher" style={{ opacity: step > 1 ? 0.7 : 1, pointerEvents: step > 1 ? 'none' : 'auto', display: "flex", background: "var(--box-tint)", padding: "4px", borderRadius: "10px", marginBottom: "15px" }}>
-               <button className={role === 'CLIENT' ? 'active' : ''} onClick={() => setRole('CLIENT')} style={{ flex: 1, padding: "8px", border: "none", borderRadius: "8px", background: role === 'CLIENT' ? "#fff" : "transparent", fontWeight: "700", cursor: "pointer", fontSize: "0.75rem" }}>Мұғалім</button>
-               <button className={role === 'SCHOOL_ADMIN' ? 'active' : ''} onClick={() => setRole('SCHOOL_ADMIN')} style={{ flex: 1, padding: "8px", border: "none", borderRadius: "8px", background: role === 'SCHOOL_ADMIN' ? "#fff" : "transparent", fontWeight: "700", cursor: "pointer", fontSize: "0.75rem" }}>Оқу ісінің меңгерушісі</button>
-               <button className={role === 'SELLER' ? 'active' : ''} onClick={() => setRole('SELLER')} style={{ flex: 1, padding: "8px", border: "none", borderRadius: "8px", background: role === 'SELLER' ? "#fff" : "transparent", fontWeight: "700", cursor: "pointer", fontSize: "0.75rem" }}>Автор</button>
-            </div>
+            {/* Role Switcher */}
+            {step === 1 && (
+              <div style={{ display: "flex", background: "#f1f5f9", padding: "4px", borderRadius: "14px", marginBottom: "25px" }}>
+                {['CLIENT', 'SCHOOL_ADMIN', 'SELLER'].map((r) => (
+                  <button 
+                    key={r}
+                    onClick={() => setRole(r)}
+                    style={{ 
+                      flex: 1, padding: "10px", border: "none", borderRadius: "11px", 
+                      background: role === r ? "white" : "transparent",
+                      color: role === r ? "#0f172a" : "#64748b",
+                      fontWeight: 800, fontSize: "0.75rem", cursor: "pointer", transition: "0.2s",
+                      boxShadow: role === r ? "0 4px 10px rgba(0,0,0,0.05)" : "none"
+                    }}
+                  >
+                    {r === 'CLIENT' ? 'Мұғалім' : r === 'SCHOOL_ADMIN' ? 'Завуч' : 'Автор'}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <form onSubmit={handleRegister}>
-              {error && <div className="err">{error}</div>}
+              {error && <div style={{ background: "#fef2f2", color: "#dc2626", padding: "12px", borderRadius: "12px", marginBottom: "20px", fontSize: "0.85rem", fontWeight: 600, border: "1px solid #fee2e2" }}>{error}</div>}
 
-              {step === 1 && (
-                <div className="fade">
-                  <div className="field with-icon"><span>👤</span><input name="fio" placeholder="Аты-жөніңіз (ТАӘ)" value={formData.fio} onChange={handleChange} required style={{ paddingLeft: "50px" }} /></div>
-                  <div className="field with-icon"><span>📞</span><input name="phone" placeholder="+7 (___) ___-__-__" value={formData.phone} onChange={handleChange} required style={{ paddingLeft: "50px" }} /></div>
-                </div>
-              )}
-
-              {step === 2 && (
-                <div className="fade">
-                  <div className="field with-icon">
-                     <span>📍</span>
-                     <select name="region" value={formData.region} onChange={handleChange} style={{ paddingLeft: "50px" }}>
-                       {Object.keys(schoolsData).sort().map(reg => <option key={reg} value={reg}>{reg}</option>)}
-                     </select>
-                  </div>
-                  <div className="field with-icon">
-                     <span>🏫</span>
-                     <select name="schoolType" value={formData.schoolType} onChange={handleChange} style={{ paddingLeft: "50px" }}>
-                       <option value="Мемлекеттік">Мемлекеттік мектеп</option>
-                       <option value="Жекеменшік">Жекеменшік мектеп</option>
-                     </select>
-                  </div>
-                  <div className="field with-icon">
-                     <span>🏛️</span>
-                     <select name="schoolName" value={formData.schoolName} onChange={handleChange} required style={{ paddingLeft: "50px" }}>
-                       <option value="">Мектепті таңдаңыз...</option>
-                       {availableSchools.map(s => <option key={s} value={s}>{s}</option>)}
-                     </select>
-                  </div>
-                  {role !== 'SCHOOL_ADMIN' && (
-                    <div className="field with-icon">
-                       <span>🎓</span>
-                       <select name="specialty" value={formData.specialty} onChange={handleChange} required style={{ paddingLeft: "50px" }}>
-                         <option value="">Мамандығыңызды таңдаңыз...</option>
-                         {specialties.map(s => <option key={s} value={s}>{s}</option>)}
-                       </select>
+              <div style={{ minHeight: "260px" }}>
+                {step === 1 && (
+                  <div>
+                    <div style={{ marginBottom: "15px" }}>
+                      <label style={labelStyle}>Толық аты-жөніңіз</label>
+                      <input name="fio" placeholder="Мысалы: Асанов Арман" value={formData.fio} onChange={handleChange} style={inputStyle} required />
                     </div>
-                  )}
-                  {role === 'CLIENT' && (
-                    <div className="field with-icon">
-                       <span>📚</span>
-                       <select name="className" value={formData.className} onChange={handleChange} required style={{ paddingLeft: "50px" }}>
-                         <option value="">Қай сыныпқа сабақ бересіз?</option>
-                         {[1,2,3,4,5,6,7,8,9,10,11].map(n => <option key={n} value={n}>{n}-сынып</option>)}
-                       </select>
+                    <div style={{ marginBottom: "15px" }}>
+                      <label style={labelStyle}>Телефон нөмірі</label>
+                      <input name="phone" placeholder="+7 (___) ___-__-__" value={formData.phone} onChange={handleChange} style={inputStyle} required />
                     </div>
-                  )}
-                </div>
-              )}
-
-              {step === 3 && (
-                <div className="fade">
-                  <div className="field with-icon">
-                     <span>🔑</span>
-                     <input name="username" placeholder="Логин (Username)" value={formData.username} onChange={handleChange} required style={{ paddingLeft: "50px", borderColor: !usernameAvailable ? "#f5222d" : "" }} />
                   </div>
-                  <div className="field with-icon" style={{ position: "relative" }}>
-                     <span>🔒</span>
-                     <input name="password" type={showPassword ? "text" : "password"} placeholder="Құпия сөз" value={formData.password} onChange={handleChange} required style={{ paddingLeft: "50px", paddingRight: "50px" }} />
-                     <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: "15px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", opacity: 0.6 }}>{showPassword ? "👁️" : "👁️‍🗨️"}</button>
-                  </div>
-                </div>
-              )}
+                )}
 
-              <div className="actions" style={{ display: "flex", gap: "10px", marginTop: "15px" }}>
-                 {step > 1 && <button type="button" onClick={prevStep} style={{ flex: 1, padding: "12px", borderRadius: "10px", border: "1px solid var(--box-border)", cursor: "pointer" }}>Артқа</button>}
-                 <button type="submit" style={{ flex: 2, padding: "12px", background: "var(--primary-blue)", color: "#fff", border: "none", borderRadius: "10px", fontWeight: "800", cursor: "pointer" }}>{isLoading ? '...' : (step === 3 ? 'Тіркелу' : 'Келесі')}</button>
+                {step === 2 && (
+                  <div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginBottom: "15px" }}>
+                       <div>
+                         <label style={labelStyle}>Аймақ</label>
+                         <select name="region" value={formData.region} onChange={handleChange} style={inputStyle}>
+                           {Object.keys(schoolsData).map(r => <option key={r} value={r}>{r}</option>)}
+                         </select>
+                       </div>
+                       <div>
+                         <label style={labelStyle}>Мектеп түрі</label>
+                         <select name="schoolType" value={formData.schoolType} onChange={handleChange} style={inputStyle}>
+                           <option value="Мемлекеттік">Мемлекеттік</option>
+                           <option value="Жекеменшік">Жекеменшік</option>
+                         </select>
+                       </div>
+                    </div>
+                    <div style={{ marginBottom: "15px" }}>
+                      <label style={labelStyle}>Мектеп атауы</label>
+                      <select name="schoolName" value={formData.schoolName} onChange={handleChange} style={inputStyle} required>
+                        <option value="">Таңдаңыз...</option>
+                        {availableSchools.map(s => <option key={s} value={s}>{s}</option>)}
+                        <option value="Басқа">Басқа мектеп...</option>
+                      </select>
+                    </div>
+                    {role === 'CLIENT' && (
+                      <div style={{ marginBottom: "15px" }}>
+                        <label style={labelStyle}>Мамандық</label>
+                        <select name="specialty" value={formData.specialty} onChange={handleChange} style={inputStyle} required>
+                          <option value="">Таңдаңыз...</option>
+                          {specialties.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {step === 3 && (
+                  <div>
+                    <div style={{ marginBottom: "15px" }}>
+                      <label style={labelStyle}>Логин (Ник)</label>
+                      <input name="username" placeholder="Кемінде 3 таңба" value={formData.username} onChange={handleChange} style={inputStyle} required />
+                    </div>
+                    <div style={{ marginBottom: "15px", position: "relative" }}>
+                      <label style={labelStyle}>Құпия сөз</label>
+                      <input name="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={formData.password} onChange={handleChange} style={inputStyle} required />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: "15px", top: "38px", background: "none", border: "none", cursor: "pointer", color: "#0A66F0", fontWeight: 700, fontSize: "0.75rem" }}>
+                        {showPassword ? 'Жасыру' : 'Көрсету'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: "flex", gap: "12px", marginTop: "30px" }}>
+                {step > 1 && (
+                  <button type="button" onClick={() => setStep(step - 1)} style={{ flex: 1, padding: "16px", borderRadius: "16px", border: "1px solid #e2e8f0", background: "white", fontWeight: 800, cursor: "pointer", color: "#64748b" }}>Артқа</button>
+                )}
+                <button 
+                  type="submit" 
+                  disabled={isLoading}
+                  style={{ 
+                    flex: 2, padding: "16px", borderRadius: "16px", background: "#0A66F0", color: "white", border: "none", fontWeight: 800, cursor: "pointer",
+                    boxShadow: "0 10px 20px rgba(10, 102, 240, 0.15)"
+                  }}
+                >
+                  {isLoading ? '...' : step === 3 ? 'Тіркелуді аяқтау' : 'Келесі қадам'}
+                </button>
               </div>
             </form>
-            <p style={{ textAlign: "center", marginTop: "20px", fontSize: "0.85rem" }}>Аккаунтыңыз бар ма? <Link href="/login" style={{ color: "var(--primary-blue)", fontWeight: "700" }}>Кіру</Link></p>
+
+            <p style={{ textAlign: "center", marginTop: "25px", color: "#64748b", fontWeight: 500 }}>
+              Аккаунтыңыз бар ма? <Link href="/login" style={{ color: "#0A66F0", fontWeight: 800, textDecoration: "none" }}>Кіру</Link>
+            </p>
           </div>
         </div>
 
-        <div className="visual-side" style={{ flex: 1, background: "var(--primary-blue)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-           <img src="/promo.png" alt="Promo" style={{ width: "80%", borderRadius: "12px", boxShadow: "0 20px 40px rgba(0,0,0,0.3)" }} />
+        {/* Right Side: Image Banner */}
+        <div className="visual-side" style={{ flex: 1, background: "#0A66F0", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+           <img 
+             src="/images/login-promo.png" 
+             alt="Promo" 
+             style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", zIndex: 1 }} 
+           />
+           <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", background: "linear-gradient(0deg, rgba(10,102,240,0.3) 0%, transparent 100%)", zIndex: 2 }}></div>
         </div>
       </div>
+
       <Footer />
+
       <style jsx>{`
-        .split-screen { display: flex; min-height: calc(100vh - 100px); background: var(--bg-main); font-family: 'Inter', sans-serif; }
-        .form-side { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; }
-        .wrapper { width: 100%; max-width: 440px; }
-        .steps-modern { display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid var(--box-border); padding-bottom: 8px; }
-        .steps-modern span { font-size: 0.75rem; font-weight: 600; color: #ccc; }
-        .steps-modern span.active { color: var(--primary-blue); }
-        .field { margin-bottom: 8px; position: relative; }
-        .with-icon span { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); z-index: 1; }
-        .field input, .field select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--box-border); background: #fff; outline: none; }
-        .err { background: #fff1f0; color: #f5222d; padding: 8px; border-radius: 8px; margin-bottom: 10px; font-size: 0.8rem; border: 1px solid #ffa39e; }
-        .fade { animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @media (max-width: 1023px) { .visual-side { display: none; } }
+        @media (max-width: 1023px) { .visual-side { display: none !important; } }
       `}</style>
     </div>
   );
 }
+
+const labelStyle = {
+  display: "block",
+  fontSize: "0.7rem",
+  fontWeight: 900,
+  color: "#94a3b8",
+  textTransform: "uppercase" as const,
+  letterSpacing: "0.5px",
+  marginBottom: "6px",
+  marginLeft: "4px"
+};
