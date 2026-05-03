@@ -24,6 +24,7 @@ export default function AdminDashboard() {
   const [error, setError] = useState("");
   const [registeredUsers, setRegisteredUsers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState("private");
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
@@ -55,11 +56,13 @@ export default function AdminDashboard() {
     const users = [...registeredUsers];
     const idx = users.findIndex(u => u.username === username);
     if (idx !== -1) {
+      const user = users[idx];
+      const planName = user.role === "SCHOOL_ADMIN" ? "Мектеп" : "Pro Мұғалім";
       const end = new Date();
       end.setMonth(end.getMonth() + 1);
       users[idx].subscription = {
         status: 'ACTIVE',
-        plan: 'Pro Мұғалім',
+        plan: planName,
         startDate: new Date().toLocaleDateString('ru-RU'),
         endDate: end.toLocaleDateString('ru-RU')
       };
@@ -118,53 +121,84 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="admin-container">
-      <header className="header">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "30px" }}>
-          <h1>Басқару панелі</h1>
+    <div className="admin-layout">
+      <aside className="sidebar">
+        <div className="sidebar-brand">MUGALIM.KZ</div>
+        <nav className="sidebar-nav">
+          <button className={`nav-item ${activeTab === 'private' ? 'active' : ''}`} onClick={() => setActiveTab('private')}>Жекеменшік</button>
+          <button className={`nav-item ${activeTab === 'state' ? 'active' : ''}`} onClick={() => setActiveTab('state')}>Мемлекеттік</button>
+          <button className={`nav-item ${activeTab === 'sellers' ? 'active' : ''}`} onClick={() => setActiveTab('sellers')}>Сатушылар</button>
+        </nav>
+        <div className="sidebar-footer">
           <button className="logout-btn" onClick={() => { localStorage.removeItem("user"); window.location.reload(); }}>Шығу</button>
         </div>
-        <div className="search-bar">
-          <input 
-            type="text" 
-            placeholder="Ник, аты немесе телефон бойынша іздеу..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-      </header>
+      </aside>
 
-      <main className="content">
-        <Section title="Жекеменшік мектеп">
-          <SubSection title="Мұғалімдер" users={groups.privateTeachers} onApprove={approveRequest} onReject={rejectRequest} />
-          <SubSection title="Оқу ісінің меңгерушісі" users={groups.privateAdmins} onApprove={approveRequest} onReject={rejectRequest} />
-        </Section>
+      <div className="main-content">
+        <header className="header">
+          <div className="header-title">
+            <h1>{activeTab === 'private' ? 'Жекеменшік мектептер' : activeTab === 'state' ? 'Мемлекеттік мектептер' : 'Сатушылар'}</h1>
+          </div>
+          <div className="search-bar">
+            <input 
+              type="text" 
+              placeholder="Іздеу (ник, аты, телефон)..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </header>
 
-        <Section title="Мемлекеттік мектеп">
-          <SubSection title="Мұғалімдер" users={groups.stateTeachers} onApprove={approveRequest} onReject={rejectRequest} />
-          <SubSection title="Оқу ісінің меңгерушісі" users={groups.stateAdmins} onApprove={approveRequest} onReject={rejectRequest} />
-        </Section>
+        <main className="content">
+          {activeTab === 'private' && (
+            <>
+              <SubSection title="Мұғалімдер" users={groups.privateTeachers} onApprove={approveRequest} onReject={rejectRequest} />
+              <SubSection title="Оқу ісінің меңгерушісі" users={groups.privateAdmins} onApprove={approveRequest} onReject={rejectRequest} />
+            </>
+          )}
 
-        <Section title="Сатушы">
-          <SellerTable users={groups.sellers} />
-        </Section>
-      </main>
+          {activeTab === 'state' && (
+            <>
+              <SubSection title="Мұғалімдер" users={groups.stateTeachers} onApprove={approveRequest} onReject={rejectRequest} />
+              <SubSection title="Оқу ісінің меңгерушісі" users={groups.stateAdmins} onApprove={approveRequest} onReject={rejectRequest} />
+            </>
+          )}
+
+          {activeTab === 'sellers' && (
+            <SellerTable users={groups.sellers} />
+          )}
+        </main>
+      </div>
 
       <style jsx>{`
-        .admin-container { min-height: 100vh; background: #fdfdfd; font-family: sans-serif; padding-bottom: 100px; color: #1e293b; }
-        .header { background: white; padding: 40px 60px; border-bottom: 1px solid #f1f5f9; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
-        .header h1 { font-size: 2.4rem; font-weight: 900; margin: 0; letter-spacing: -1px; }
-        .logout-btn { padding: 10px 20px; border-radius: 12px; border: 1px solid #f1f5f9; background: white; font-weight: 700; cursor: pointer; color: #ef4444; }
+        .admin-layout { display: flex; min-height: 100vh; background: #fdfdfd; font-family: sans-serif; color: #1e293b; }
         
-        .search-bar { margin-top: 25px; }
-        .search-bar input { width: 100%; max-width: 600px; padding: 18px 24px; border-radius: 20px; border: 1px solid #e2e8f0; background: #f8fafc; outline: none; font-size: 1rem; font-weight: 600; transition: 0.2s; }
-        .search-bar input:focus { border-color: #0A66F0; background: white; box-shadow: 0 10px 20px rgba(10,102,240,0.05); }
+        .sidebar { width: 280px; background: white; border-right: 1px solid #f1f5f9; display: flex; flex-direction: column; position: fixed; height: 100vh; z-index: 100; }
+        .sidebar-brand { padding: 40px; font-size: 1.2rem; font-weight: 900; letter-spacing: 2px; color: #0f172a; border-bottom: 1px solid #f1f5f9; }
+        .sidebar-nav { padding: 20px; flex-grow: 1; display: flex; flex-direction: column; gap: 8px; }
+        .nav-item { padding: 16px 20px; border-radius: 12px; border: none; background: transparent; text-align: left; font-weight: 700; color: #64748b; cursor: pointer; transition: 0.2s; font-size: 0.95rem; }
+        .nav-item:hover { background: #f8fafc; color: #0f172a; }
+        .nav-item.active { background: #0f172a; color: white; }
+        .sidebar-footer { padding: 20px; border-top: 1px solid #f1f5f9; }
+        
+        .main-content { flex-grow: 1; margin-left: 280px; }
+        
+        .header { background: white; padding: 40px 60px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 90; }
+        .header h1 { font-size: 1.8rem; font-weight: 900; margin: 0; letter-spacing: -0.5px; }
+        
+        .search-bar { width: 400px; }
+        .search-bar input { width: 100%; padding: 14px 20px; border-radius: 14px; border: 1px solid #e2e8f0; background: #f8fafc; outline: none; font-size: 0.9rem; font-weight: 600; transition: 0.2s; }
+        .search-bar input:focus { border-color: #0f172a; background: white; }
 
-        .content { padding: 40px 60px; max-width: 1600px; margin: 0 auto; }
+        .logout-btn { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #fee2e2; background: #fef2f2; font-weight: 700; cursor: pointer; color: #ef4444; font-size: 0.9rem; }
+        .logout-btn:hover { background: #fee2e2; }
+
+        .content { padding: 40px 60px; max-width: 1400px; }
       `}</style>
     </div>
   );
 }
+
 
 function Section({ title, children }: any) {
   return (
