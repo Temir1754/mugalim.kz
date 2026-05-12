@@ -7,65 +7,9 @@ import { generateLessonPlan, generateKTPThemes } from "@/lib/gemini";
 import { calendar } from "@/utils/calendar";
 import Footer from "@/components/Footer";
 
-const GEMINI_API_KEY = "AIzaSyAlx1Zs7f41_odpXX6fS77eKLPsfuJSdYM";
+// GEMINI_API_KEY removed for security. Using server-side generation instead.
 
-async function callGeminiAI(
-  subject: string,
-  className: string,
-  theme: string,
-  language: string = "kz"
-): Promise<any> {
-  const prompt = `Сіз — Қазақстан Республикасының білім беру жүйесінің сарапшы-әдіскерісіз.
-Қазақстан мұғалімдеріне арналған Сабақтың қысқа мерзімді жоспарын (ҚМЖ) құрастырыңыз.
-
-МӘЛІМЕТТЕР:
-- ПӘН: ${subject}
-- СЫНЫП: ${className}
-- ТАҚЫРЫП: ${theme}
-- ТІЛ: Қазақша
-
-ТЕК валидті JSON объектісін қайтарыңыз (markdown блоктарсыз, блок сыртында тырнақшасыз):
-{
-  "lessonGoal": "Сабақтың SMART-мақсаты",
-  "criteria": "бағалау критерийлері",
-  "langGoals": "тілдік мақсаттар мен терминдер",
-  "values": "құндылықтарды дарыту",
-  "links": "пәнаралық байланыстар",
-  "priorKnowledge": "алдыңғы білім",
-  "lessonFlow": "Басы: ...\\nОртасы: ...\\nСоңы: ...",
-  "differentiation": "саралау",
-  "assessment": "қалыптастырушы бағалау",
-  "resources": "ресурстар"
-}
-
-Барлық мәндер ТЕК ҚАЗАҚ ТІЛІНДЕ болуы тиіс.`;
-
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
-      }),
-    }
-  );
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as any)?.error?.message || `Gemini error ${res.status}`);
-  }
-
-  const data = await res.json();
-  const rawText: string =
-    data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-  const jsonStr = rawText
-    .replace(/```json/gi, "")
-    .replace(/```/g, "")
-    .trim();
-  return JSON.parse(jsonStr);
-}
+// AI generation is handled via server actions in lib/gemini.ts
 
 export default function GeneratorPage() {
   const { t } = useLanguage();
@@ -75,9 +19,10 @@ export default function GeneratorPage() {
   const [docType, setDocType] = useState("КСП"); // "КСП" or "КТП"
   const [subject, setSubject] = useState("");
   const [className, setClassName] = useState("");
-  const [docLanguage] = useState("kz");
+  const [docLanguage, setDocLanguage] = useState("kz");
   const [theme, setTheme] = useState("");
   const [book, setBook] = useState("");
+  const [lessonDate, setLessonDate] = useState("");
 
   // KSP specific fields
   const [lessonGoal, setLessonGoal] = useState("");
@@ -94,10 +39,16 @@ export default function GeneratorPage() {
   const [assessment, setAssessment] = useState("");
   const [resources, setResources] = useState("");
 
-  // KTP specific fields
   const [selectedDays, setSelectedDays] = useState<number[]>([]); // [1, 3] for Mon, Wed
   const [totalHours, setTotalHours] = useState(34);
   const [ktpLessons, setKtpLessons] = useState<{ index: number; date: string; theme: string }[]>([]);
+
+  // --- NEW RAG-READY FIELDS ---
+  const [dbSubjects, setDbSubjects] = useState<any[]>([]);
+  const [dbTextbooks, setDbTextbooks] = useState<any[]>([]);
+  const [dbTopics, setDbTopics] = useState<any[]>([]);
+  const [selectedTextbookId, setSelectedTextbookId] = useState("");
+  const [isLoadingMetadata, setIsLoadingMetadata] = useState(false);
 
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -106,12 +57,147 @@ export default function GeneratorPage() {
 
   useEffect(() => {
     setMounted(true);
+    // Fetch all available subjects from DB
+    fetch("/api/generator/metadata?type=subjects")
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setDbSubjects(data);
+      })
+      .catch(err => console.error("Error fetching subjects:", err));
+
+    // Auto-fill from localStorage if available
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user.fio) setTeacherName(user.fio);
+        if (user.specialty) setSubject(user.specialty);
+        if (user.className) setClassName(user.className);
+      } catch (e) {
+        console.error("Auth parse error", e);
+      }
+    }
   }, []);
 
-  if (!mounted) return null;
-
-  const subjects: string[] = translations["kz"].subjects as unknown as string[];
   const classes: string[] = translations["kz"].classes as unknown as string[];
+  
+  const publishersBySubject: Record<string, string[]> = {
+    "Ағылшын тілі": ["Express Publishing Kazakhstan", "Oxford University Press", "Cambridge University Press", "Macmillan"],
+    "Математика": ["Мектеп", "Атамұра", "Алматыкітап баспасы", "Арман-ПВ"],
+    "Алгебра": ["Мектеп", "Атамұра", "Арман-ПВ"],
+    "Геометрия": ["Мектеп", "Атамұра"],
+    "Қазақ тілі": ["Атамұра", "Алматыкітап баспасы", "Мектеп", "Арман-ПВ"],
+    "Қазақ әдебиеті": ["Атамұра", "Алматыкітап баспасы", "Арман-ПВ"],
+    "Орыс тілі": ["Мектеп", "Алматыкітап баспасы", "Көкжиек-Горизонт"],
+    "Информатика": ["Арман-ПВ", "Мектеп", "Bilim Media Group"],
+    "Физика": ["Мектеп", "Арман-ПВ"],
+    "Химия": ["Мектеп", "Арман-ПВ"],
+    "Биология": ["Мектеп", "Атамұра"],
+    "География": ["Атамұра", "Алматыкітап баспасы"],
+    "Тарих": ["Атамұра", "Мектеп"],
+    "Жаратылыстану": ["Алматыкітап баспасы", "Мектеп", "Атамұра"],
+    "Өзін-өзі тану": ["Бөбек"],
+    "Көркем еңбек": ["Алматыкітап баспасы"],
+    "Дене шынықтыру": ["Мектеп"]
+  };
+
+  const defaultPublishers = [
+    "Атамұра",
+    "Мектеп",
+    "Алматыкітап баспасы",
+    "Көкжиек-Горизонт",
+    "Aknur Press",
+    "Арман-ПВ",
+    "Bilim Media Group",
+    "Express Publishing Kazakhstan"
+  ];
+
+  const subjectsByGrade: Record<string, string[]> = {
+    primary: ["Математика", "Қазақ тілі", "Әдебиеттік оқу", "Орыс тілі", "Ағылшын тілі", "Жаратылыстану", "Дүниетану", "Көркем еңбек", "Музыка", "Дене шынықтыру", "Өзін-өзі тану", "Цифрлық сауаттылық"],
+    middle56: ["Математика", "Қазақ тілі", "Қазақ әдебиеті", "Орыс тілі", "Орыс әдебиеті", "Ағылшын тілі", "Жаратылыстану", "Қазақстан тарихы", "Информатика", "Көркем еңбек", "Музыка", "Дене шынықтыру"],
+    middle79: ["Алгебра", "Геометрия", "Физика", "Химия", "Биология", "География", "Информатика", "Қазақстан тарихы", "Дүниежүзі тарихы", "Қазақ тілі", "Қазақ әдебиеті", "Орыс тілі", "Орыс әдебиеті", "Ағылшын тілі", "Дене шынықтыру", "Көркем еңбек"],
+    senior: ["Алгебра және анализ бастамалары", "Геометрия", "Физика", "Химия", "Биология", "География", "Информатика", "Қазақстан тарихы", "Дүниежүзі тарихы", "Құқық негіздері", "Қазақ тілі", "Қазақ әдебиеті", "Орыс тілі", "Орыс әдебиеті", "Ағылшын тілі", "Дене шынықтыру"]
+  };
+
+  const filteredSubjects = (() => {
+    const dbSubjectNames = dbSubjects.map(s => s.name);
+    let baseList: string[] = [];
+    
+    if (!className) {
+      baseList = subjectsByGrade.primary;
+    } else {
+      const grade = parseInt(className);
+      if (grade <= 4) baseList = subjectsByGrade.primary;
+      else if (grade <= 6) baseList = subjectsByGrade.middle56;
+      else if (grade <= 9) baseList = subjectsByGrade.middle79;
+      else baseList = subjectsByGrade.senior;
+    }
+
+    return Array.from(new Set([...baseList, ...dbSubjectNames])).sort();
+  })();
+
+  // Reset subject if it's not in the new filtered list
+  useEffect(() => {
+    if (className && subject && !filteredSubjects.includes(subject)) {
+      setSubject("");
+    }
+  }, [className, filteredSubjects, subject]);
+
+  const currentPublishers = subject && publishersBySubject[subject] 
+    ? publishersBySubject[subject] 
+    : defaultPublishers;
+
+  // --- NEW: FETCH TEXTBOOKS FROM DB ---
+  useEffect(() => {
+    async function fetchTextbooks() {
+      if (!subject || !className) {
+        setDbTextbooks([]);
+        return;
+      }
+      setIsLoadingMetadata(true);
+      try {
+        const res = await fetch(`/api/generator/metadata?type=textbooks&subjectName=${encodeURIComponent(subject)}&grade=${className}&language=${docLanguage}`);
+        const data = await res.json();
+        setDbTextbooks(data);
+        
+        if (Array.isArray(data) && data.length === 1) {
+          setSelectedTextbookId(data[0].id);
+          setBook(`${data[0].publisher}, ${data[0].year} (${data[0].author})`);
+        } else {
+          setSelectedTextbookId("");
+          setBook("");
+        }
+      } catch (e) {
+        console.error("Textbook fetch error", e);
+      } finally {
+        setIsLoadingMetadata(false);
+      }
+    }
+    fetchTextbooks();
+  }, [subject, className, docLanguage]);
+
+  // --- NEW: FETCH TOPICS FROM DB ---
+  useEffect(() => {
+    async function fetchTopics() {
+      if (!selectedTextbookId) {
+        setDbTopics([]);
+        return;
+      }
+      setIsLoadingMetadata(true);
+      try {
+        const res = await fetch(`/api/generator/metadata?type=topics&textbookId=${selectedTextbookId}`);
+        const data = await res.json();
+        setDbTopics(data);
+      } catch (e) {
+        console.error("Failed to fetch topics", e);
+      } finally {
+        setIsLoadingMetadata(false);
+      }
+    }
+    fetchTopics();
+  }, [selectedTextbookId]);
+
+  if (!mounted) return null;
 
   const handleCalculateKTP = () => {
     if (selectedDays.length === 0) {
@@ -208,6 +294,7 @@ export default function GeneratorPage() {
           docLanguage,
           theme,
           book,
+          lessonDate,
           authorId: user?.id,
           lessonGoal,
           criteria,
@@ -279,13 +366,17 @@ export default function GeneratorPage() {
 
         <div
           style={{
-            background: "var(--card-bg)",
-            border: "1px solid var(--box-border)",
-            borderRadius: 20,
-            padding: 28,
+            background: "rgba(255, 255, 255, 0.03)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+            borderRadius: 30,
+            padding: 32,
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
-            gap: 20,
+            gap: 24,
+            boxShadow: "0 20px 50px rgba(0,0,0,0.2)",
+            transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
           }}
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -317,44 +408,89 @@ export default function GeneratorPage() {
             </select>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, gridColumn: "span 1" }}>
-             <label style={labelStyle}>{t("gen_label_doc_lang")}</label>
-             <div style={{ ...inputStyle, background: "var(--box-tint)", opacity: 0.8 }}>Қазақша</div>
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, gridColumn: "span 2" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <label style={labelStyle}>{t("gen_label_subject")}</label>
             <select value={subject} onChange={(e) => setSubject(e.target.value)} style={selectStyle}>
               <option value="">Пәнді таңдаңыз...</option>
-              {subjects.map((s) => (
+              {filteredSubjects.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
           </div>
 
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, gridColumn: "span 1" }}>
+             <label style={labelStyle}>{t("gen_label_doc_lang")}</label>
+             <select value={docLanguage} onChange={(e) => setDocLanguage(e.target.value)} style={selectStyle}>
+                <option value="kz">Қазақша</option>
+                <option value="ru">Русский</option>
+             </select>
+          </div>
+
           {docType === "КСП" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, gridColumn: "span 2" }}>
-              <label style={labelStyle}>{t("gen_label_theme")}</label>
-              <input
-                type="text"
-                placeholder="Мысалы: Тіктөртбұрыш ауданы"
-                value={theme}
-                onChange={(e) => setTheme(e.target.value)}
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={labelStyle}>{t("gen_label_doc_lang") === "Оқыту тілі" ? "Күні" : "Дата"}</label>
+              <input 
+                type="date" 
+                value={lessonDate} 
+                onChange={(e) => setLessonDate(e.target.value)} 
                 style={inputStyle}
               />
             </div>
           )}
 
           {docType === "КСП" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={labelStyle}>Оқулық / Баспа</label>
+              <select 
+                value={selectedTextbookId} 
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setSelectedTextbookId(id);
+                  const found = Array.isArray(dbTextbooks) ? dbTextbooks.find(t => t.id === id) : null;
+                  if (found) setBook(`${found.publisher}, ${found.year} (${found.author})`);
+                }} 
+                style={selectStyle}
+              >
+                <option value="">Баспаны таңдаңыз...</option>
+                {Array.isArray(dbTextbooks) && dbTextbooks.length > 0 ? (
+                  dbTextbooks.map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.publisher}, {t.year} ({t.author}) {t.part ? `| Бөлім ${t.part}` : ''} {t.language ? `[${t.language.toUpperCase()}]` : ''}
+                    </option>
+                  ))
+                ) : (
+                  currentPublishers.map(b => (
+                    <option key={b} value={b}>{b}</option>
+                  ))
+                )}
+                <option value="Басқа">Басқа...</option>
+              </select>
+            </div>
+          )}
+
+          {docType === "КСП" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 6, gridColumn: "span 2" }}>
-              <label style={labelStyle}>{t("gen_label_book")}</label>
-              <input
-                type="text"
-                placeholder={t("gen_placeholder_book")}
-                value={book}
-                onChange={(e) => setBook(e.target.value)}
-                style={inputStyle}
-              />
+              <label style={labelStyle}>{t("gen_label_theme")}</label>
+              {Array.isArray(dbTopics) && dbTopics.length > 0 ? (
+                <select 
+                  value={theme}
+                  onChange={(e) => setTheme(e.target.value)}
+                  style={selectStyle}
+                >
+                  <option value="">Сабақ тақырыбын таңдаңыз...</option>
+                  {dbTopics.map(t => (
+                    <option key={t.id} value={t.name}>{t.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  placeholder="Сабақ тақырыбын жазыңыз (мысалы: Тіктөртбұрыш ауданы)"
+                  value={theme}
+                  onChange={(e) => setTheme(e.target.value)}
+                  style={inputStyle}
+                />
+              )}
             </div>
           )}
 
@@ -640,27 +776,29 @@ const labelStyle: React.CSSProperties = {
 };
 
 const inputStyle: React.CSSProperties = {
-  background: "var(--box-tint)",
-  border: "1px solid var(--box-border)",
-  borderRadius: 12,
-  padding: "12px 16px",
+  background: "rgba(255, 255, 255, 0.05)",
+  border: "1px solid rgba(255, 255, 255, 0.1)",
+  borderRadius: 14,
+  padding: "14px 18px",
   color: "var(--text-main)",
-  fontSize: 14,
+  fontSize: 15,
   width: "100%",
   outline: "none",
   boxSizing: "border-box",
+  transition: "all 0.2s ease",
 };
 
 const selectStyle: React.CSSProperties = {
-  background: "var(--box-tint)",
-  border: "1px solid var(--box-border)",
-  borderRadius: 12,
-  padding: "12px 16px",
-  fontSize: 14,
+  background: "rgba(255, 255, 255, 0.05)",
+  border: "1px solid rgba(255, 255, 255, 0.1)",
+  borderRadius: 14,
+  padding: "14px 18px",
+  fontSize: 15,
   width: "100%",
   outline: "none",
   boxSizing: "border-box",
   cursor: "pointer",
+  color: "var(--text-main)",
 };
 
 const spinnerStyle: React.CSSProperties = {

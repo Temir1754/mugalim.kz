@@ -1,140 +1,231 @@
 import { NextResponse } from 'next/server';
-import PizZip from 'pizzip';
-import Docxtemplater from 'docxtemplater';
-import fs from 'fs';
-import path from 'path';
-
-// Запрещаем Next.js кэшировать эту генерацию!
-export const dynamic = 'force-dynamic';
+import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle } from 'docx';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const data = await request.json();
+    const { 
+      docType, teacherName, subject, className, theme, docLanguage,
+      lessonGoal, criteria, langGoals, values, links, priorKnowledge,
+      lessonStages, lessonFlow, assessment, resources,
+      lessons, // Array of { index, date, theme } for KTP
+      lessonDate // String for KSP
+    } = data;
+
+    const isRu = docLanguage === 'ru';
     
-    const docType = body.docType || "ҚМЖ"; // "КТЖ (Күнтізбелік-тақырыптық жоспар)" немесе "ҚМЖ (Сабақ жоспары)"
-    const teacherName = body.teacherName || "Мұғалімнің аты-жөні";
-    const subject = body.subject || "Пән";
-    const className = body.className || "Сынып";
-    const lessonDates = body.lessonDates || [];
+    // Переводы
+    const titleKtp = isRu ? "КАЛЕНДАРНО-ТЕМАТИЧЕСКИЙ ПЛАН (КТП)" : "КҮНТІЗБЕЛІК-ТАҚЫРЫПТЫҚ ЖОСПАР";
+    const titleKsp = isRu ? "КРАТКОСРОЧНЫЙ ПЛАН (КСП)" : "ҚЫСҚА МЕРЗІМДІ ЖОСПАР (ҚМЖ)";
+    const lblSubject = isRu ? "Предмет: " : "Пән: ";
+    const lblClass = isRu ? "\tКласс: " : "\tСынып: ";
+    const lblTheme = isRu ? "Тема: " : "Тақырып: ";
+    const lblTeacher = isRu ? "Учитель: " : "Мұғалім: ";
+    const lblGoal = isRu ? "Цель урока" : "Сабақтың мақсаты";
+    const lblCriteria = isRu ? "Критерии оценивания" : "Бағалау критерийлері";
+    const lblFlow = isRu ? "Ход урока" : "Сабақтың барысы";
+    const lblStage = isRu ? "Этап" : "Кезең";
+    const lblTeacherAct = isRu ? "Действия педагога" : "Педагогтің әрекеті";
+    const lblStudentAct = isRu ? "Действия ученика" : "Оқушының әрекеті";
+    const lblEval = isRu ? "Оценивание" : "Бағалау";
+    const lblEvalPrefix = isRu ? "Оценивание: " : "Бағалау: ";
+    const lblResPrefix = isRu ? "Ресурсы: " : "Ресурстар: ";
 
-    // Выбираем шаблон
-    let templateName = "ktp_template_v3.docx";
-    if (docType.includes("ҚМЖ") || docType.includes("КСП")) {
-      templateName = "ksp_template.docx";
-    }
-
-    const templatePath = path.join(process.cwd(), "src", "templates", templateName);
-    const content = fs.readFileSync(templatePath, 'binary');
-
-    const zip = new PizZip(content);
-    const doc = new Docxtemplater(zip, {
-      paragraphLoop: true,
-      linebreaks: true,
-      delimiters: { start: '[', end: ']' }
-    });
-
-    if (docType.includes("КТЖ") || docType.includes("КТП")) {
-      // Логика для КТЖ (Массив уроков на год)
-      const lessons = body.lessons || [];
-
-      doc.render({
-        teacherName,
-        subject,
-        className,
-        lessons
-      });
-    } else {
-      // Логика для ҚМЖ (Один конкретный урок)
-      const lessonDate = lessonDates.length > 0 ? lessonDates[0] : new Date().toLocaleDateString("kz-KZ");
-      
-      // Обработка структурированного хода урока (lessonStages)
-      const lessonStages = body.lessonStages || [];
-
-      doc.render({
-        teacherName,
-        subject,
-        className,
-        date: lessonDate,
-        docLanguage: "kz",
-        theme: body.theme || "Сабақ тақырыбы",
-        book: body.book || "",
-        lessonNumber: body.lessonNumber || "1",
-        goals: body.lessonGoal || "",
-        lessonGoal: body.lessonGoal || "",
-        criteria: body.criteria || "",
-        langGoals: body.langGoals || "",
-        values: body.values || "",
-        links: body.links || "",
-        priorKnowledge: body.priorKnowledge || "",
-        lessonFlow: body.lessonFlow || "",
-        differentiation: body.differentiation || "",
-        assessment: body.assessment || "",
-        methodology: body.methodology || "",
-        selfReflection: body.selfReflection || "",
-        resources: (lessonStages && lessonStages.length > 0) 
-          ? lessonStages.map((s: any) => s.resources).join(", ") 
-          : (body.resources || ""),
-        
-        lessonStages: lessonStages.map((s: any) => ({
-          stage: s.stage || "",
-          teacherActions: s.teacherActions || "",
-          studentActions: s.studentActions || "",
-          evaluation: s.evaluation || "",
-          resources: s.resources || ""
-        })),
-        
-        allTeacherActions: lessonStages.map((s: any) => `${s.stage}:\n${s.teacherActions}`).join("\n\n"),
-        allStudentActions: lessonStages.map((s: any) => `${s.stage}:\n${s.studentActions}`).join("\n\n"),
-        allEvaluation: lessonStages.map((s: any) => `${s.stage}:\n${s.evaluation}`).join("\n\n"),
-        
-        teacherActions2: lessonStages[1]?.teacherActions || "",
-        studentActions2: lessonStages[1]?.studentActions || "",
-        evaluation2: lessonStages[1]?.evaluation || "",
-        
-        teacherActions3: lessonStages[2]?.teacherActions || "",
-        studentActions3: lessonStages[2]?.studentActions || "",
-        evaluation3: lessonStages[2]?.evaluation || "",
-      });
-    }
-
-    const buf = doc.getZip().generate({
-      type: "arraybuffer",
-      compression: "DEFLATE",
-    });
-
-    const filename = `mugalim_${(docType.includes('КТЖ') || docType.includes('КТП')) ? 'ktj' : 'qmj'}.docx`;
-
-    // Save to Database if authorId is present
-    if (body.authorId) {
-      try {
-        const { prisma } = await import('@/lib/prisma');
-        await prisma.material.create({
-          data: {
-            type: docType,
-            subject: subject,
-            dayOfWeek: new Date().toLocaleDateString('kz-KZ', { weekday: 'short' }),
-            classNumber: className,
-            authorId: body.authorId,
-            fileUrl: `/api/download/${filename}`,
-            status: 'APPROVED',
-          }
-        });
-      } catch (dbError) {
-        console.error("Failed to save material to DB:", dbError);
+    let formattedDate = "";
+    if (lessonDate) {
+      const d = new Date(lessonDate);
+      if (!isNaN(d.getTime())) {
+        formattedDate = d.toLocaleDateString("ru-RU");
       }
     }
 
-    return new NextResponse(buf, {
-      status: 200,
+    console.log("Starting docx generation for docType:", docType);
+
+    let docChildren: any[] = [];
+
+    if (docType === 'КТП') {
+      const ktpLessons = Array.isArray(lessons) ? lessons : [];
+      const totalHours = ktpLessons.length || 34;
+
+      docChildren = [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ 
+              text: isRu 
+                ? `Календарно-тематическое планирование по предмету «${subject || ""}»` 
+                : `«${subject || ""}» пәнінен күнтізбелік-тақырыптық жоспарлау`, 
+              bold: true, size: 28 
+            }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ 
+              text: isRu 
+                ? `${className || ""}-класс\t\t\t${totalHours} часов в учебном году` 
+                : `${className || ""}-сынып\t\t\tОқу жылында ${totalHours} сағат`, 
+              bold: true 
+            }),
+          ],
+        }),
+        new Paragraph({ text: "" }),
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: isRu ? "Разделы долгосрочного плана" : "Ұзақ мерзімді жоспардың бөлімдері", bold: true })], alignment: AlignmentType.CENTER })] }),
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: isRu ? "Темы урока" : "Сабақтың тақырыбы", bold: true })], alignment: AlignmentType.CENTER })] }),
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: isRu ? "Цели обучения" : "Оқу мақсаттары", bold: true })], alignment: AlignmentType.CENTER })] }),
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: isRu ? "Кол-во часов" : "Сағат саны", bold: true })], alignment: AlignmentType.CENTER })] }),
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: isRu ? "Сроки" : "Мерзімі", bold: true })], alignment: AlignmentType.CENTER })] }),
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: isRu ? "Примечание" : "Ескерту", bold: true })], alignment: AlignmentType.CENTER })] }),
+              ],
+            }),
+            ...ktpLessons.map((l: any) => new TableRow({
+              children: [
+                new TableCell({ children: [new Paragraph({ text: "" })] }), // Раздел (empty for now)
+                new TableCell({ children: [new Paragraph({ text: l.theme || "-" })] }), // Тема
+                new TableCell({ children: [new Paragraph({ text: "" })] }), // Цели (empty for now)
+                new TableCell({ children: [new Paragraph({ text: "1", alignment: AlignmentType.CENTER })] }), // Кол-во часов
+                new TableCell({ children: [new Paragraph({ text: l.date || "-", alignment: AlignmentType.CENTER })] }), // Сроки
+                new TableCell({ children: [new Paragraph({ text: "" })] }), // Примечание
+              ],
+            })),
+          ],
+        }),
+      ];
+    } else {
+      // КСП (Краткосрочный план)
+      docChildren = [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: `КГУ «Наименование школы»`, bold: true }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({ text: isRu ? "(наименование организации образования)" : "(білім беру ұйымының атауы)", size: 20 }),
+          ],
+        }),
+        new Paragraph({ text: "" }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: titleKsp, bold: true }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: `${lblTheme} 1`, bold: true }), // Placeholder for lesson number
+          ],
+        }),
+        new Paragraph({ text: "" }),
+
+        // Basic Info Table
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({ width: { size: 30, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: isRu ? "Раздел" : "Бөлім", bold: true })] })] }),
+                new TableCell({ width: { size: 70, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: subject || "-" })] }),
+              ],
+            }),
+            new TableRow({
+              children: [
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: isRu ? "ФИО педагога" : "Педагогтің Т.А.Ә.", bold: true })] })] }),
+                new TableCell({ children: [new Paragraph({ text: teacherName || "-" })] }),
+              ],
+            }),
+            new TableRow({
+              children: [
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: isRu ? "Дата" : "Күні", bold: true })] })] }),
+                new TableCell({ children: [new Paragraph({ text: formattedDate })] }),
+              ],
+            }),
+            new TableRow({
+              children: [
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: `${isRu ? "Класс" : "Сынып"} ${className || "-"}`, bold: true })] })] }),
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: isRu ? "Количество присутствующих: \t\t отсутствующих: " : "Қатысушылар саны: \t\t Қатыспағандар саны: ", bold: true })] })] }),
+              ],
+            }),
+            new TableRow({
+              children: [
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: isRu ? "Тема урока" : "Сабақтың тақырыбы", bold: true })] })] }),
+                new TableCell({ children: [new Paragraph({ text: theme || "-" })] }),
+              ],
+            }),
+            new TableRow({
+              children: [
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: isRu ? "Цели обучения, которые достигаются на данном уроке" : "Осы сабақта қол жеткізілетін оқу мақсаттары", bold: true })] })] }),
+                new TableCell({ children: [new Paragraph({ text: criteria || "-" })] }), // Using criteria as learning goals mapping
+              ],
+            }),
+            new TableRow({
+              children: [
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: lblGoal, bold: true })] })] }),
+                new TableCell({ children: [new Paragraph({ text: lessonGoal || "-" })] }),
+              ],
+            }),
+          ],
+        }),
+        
+        new Paragraph({ text: "" }),
+        new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: lblFlow, bold: true, size: 28 })] }),
+        new Paragraph({ text: "" }),
+
+        // Lesson Flow Table
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({ width: { size: 15, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: isRu ? "Этап урока/ Время" : "Сабақтың кезеңі/ Уақыт", bold: true })], alignment: AlignmentType.CENTER })] }),
+                new TableCell({ width: { size: 35, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: lblTeacherAct, bold: true })], alignment: AlignmentType.CENTER })] }),
+                new TableCell({ width: { size: 25, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: lblStudentAct, bold: true })], alignment: AlignmentType.CENTER })] }),
+                new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: lblEval, bold: true })], alignment: AlignmentType.CENTER })] }),
+                new TableCell({ width: { size: 15, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: isRu ? "Ресурсы" : "Ресурстар", bold: true })], alignment: AlignmentType.CENTER })] }),
+              ],
+            }),
+            ...(lessonStages && lessonStages.length > 0 ? lessonStages : [{stage: "Басы", teacherActions: lessonFlow?.substring(0, 500), studentActions: "-", evaluation: "-", resources: "-"}]).map((s: any) => new TableRow({
+              children: [
+                new TableCell({ children: [new Paragraph({ text: s.stage || "-" })] }),
+                new TableCell({ children: [new Paragraph({ text: s.teacherActions || "-" })] }),
+                new TableCell({ children: [new Paragraph({ text: s.studentActions || "-" })] }),
+                new TableCell({ children: [new Paragraph({ text: s.evaluation || "-" })] }),
+                new TableCell({ children: [new Paragraph({ text: s.resources || resources || "-" })] }),
+              ],
+            })),
+          ],
+        }),
+      ];
+    }
+
+    // Create document
+    const doc = new Document({
+      sections: [{
+        properties: {},
+        children: docChildren,
+      }],
+    });
+
+    console.log("Doc object created, converting to buffer...");
+    const buffer = await Packer.toBuffer(doc);
+    console.log("Buffer ready, size:", buffer.length);
+
+    return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'Content-Disposition': `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
-        'Content-Length': buf.byteLength.toString(),
+        'Content-Disposition': 'attachment; filename="zhospar.docx"',
       },
     });
 
-  } catch (error) {
-    console.error("Генератор қатесі:", error);
-    return NextResponse.json({ error: "Күрделі қате кетті" }, { status: 500 });
+  } catch (error: any) {
+    console.error('Docx Generation Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -7,53 +7,48 @@ export default function Footer() {
   const { t } = useLanguage();
   return (
     <footer style={{ 
-      backgroundColor: "#1a1a24", 
+      backgroundColor: "var(--primary-navy)", 
       color: "#ffffff", 
-      padding: "60px 20px 100px 20px", 
-      marginTop: "40px"
+      padding: "80px 0", 
+      marginTop: "80px"
     }}>
-      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-        <div className="grid-form" style={{ gap: "40px" }}>
+      <div className="inner-container">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "60px" }}>
           
-          {/* Logo & About */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-            <div className="logo" style={{ color: "white", fontSize: "1.5rem", gap: "10px" }}>
-              <img src="/logo.svg" alt="Mugalim.kz" style={{ height: "70px", width: "auto", filter: "brightness(0) invert(1)" }} />
+          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+            <div className="logo" style={{ color: "white", fontSize: "1.75rem" }}>
+              mu-ga-lim.kz
             </div>
-            <p style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.6)", lineHeight: "1.6" }}>
+            <p style={{ fontSize: "0.95rem", color: "rgba(255,255,255,0.6)", lineHeight: "1.6" }}>
               {t('footer_desc')}
             </p>
           </div>
 
-          {/* Links */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <h4 style={{ color: "white", marginBottom: "5px" }}>{t('footer_nav')}</h4>
-            <Link href="/generator" style={{ color: "rgba(255,255,255,0.6)", textDecoration: "none", fontSize: "0.9rem" }}>{t('nav_plans')}</Link>
-            <Link href="/catalog" style={{ color: "rgba(255,255,255,0.6)", textDecoration: "none", fontSize: "0.9rem" }}>{t('nav_catalog')}</Link>
-            <Link href="/client" style={{ color: "rgba(255,255,255,0.6)", textDecoration: "none", fontSize: "0.9rem" }}>Жеке кабинет</Link>
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <h4 className="serif" style={{ color: "white", marginBottom: "8px", fontSize: "1.25rem" }}>{t('footer_nav')}</h4>
+            <Link href="/generator" style={{ color: "rgba(255,255,255,0.6)", textDecoration: "none" }}>{t('nav_plans')}</Link>
+            <Link href="/catalog" style={{ color: "rgba(255,255,255,0.6)", textDecoration: "none" }}>{t('nav_catalog')}</Link>
+            <Link href="/client" style={{ color: "rgba(255,255,255,0.6)", textDecoration: "none" }}>Жеке кабинет</Link>
           </div>
 
-          {/* Support & Socials */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <h4 style={{ color: "white", marginBottom: "5px" }}>{t('footer_support')}</h4>
-            <Link href="https://wa.me/77770000000" style={{ color: "white", textDecoration: "none", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "8px" }}>
-               <span>💬 WhatsApp: +7 (777) 000-00-00</span>
-            </Link>
-            <div style={{ marginTop: "10px", display: "flex", gap: "15px" }}>
-                <Link href="#" style={{ color: "white", fontSize: "0.95rem", textDecoration: "none" }}>📸 Instagram</Link>
-                <Link href="#" style={{ color: "white", fontSize: "0.95rem", textDecoration: "none" }}>✈️ Telegram</Link>
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <h4 className="serif" style={{ color: "white", marginBottom: "8px", fontSize: "1.25rem" }}>{t('footer_support')}</h4>
+            <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.95rem" }}>WhatsApp: +7 (777) 000-00-00</div>
+            <div style={{ display: "flex", gap: "24px", marginTop: "8px" }}>
+                <Link href="#" style={{ color: "white", textDecoration: "none" }}>Instagram</Link>
+                <Link href="#" style={{ color: "white", textDecoration: "none" }}>Telegram</Link>
             </div>
           </div>
 
         </div>
 
         <div style={{ 
-          marginTop: "60px", 
-          paddingTop: "20px", 
+          marginTop: "80px", 
+          paddingTop: "32px", 
           borderTop: "1px solid rgba(255,255,255,0.1)", 
           textAlign: "center",
-          fontSize: "0.8rem",
-          color: "rgba(255,255,255,0.3)" 
+          fontSize: "0.85rem",
+          color: "rgba(255,255,255,0.4)" 
         }}>
           {t('footer_rights')}
         </div>

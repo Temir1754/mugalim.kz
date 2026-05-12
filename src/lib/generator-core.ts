@@ -24,7 +24,7 @@ export async function generateAIContent(subject: string, className: string, them
 3. Поля JSON: lessonGoal, criteria, langGoals, values, links, priorKnowledge, lessonFlow, differentiation, assessment, resources.`;
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

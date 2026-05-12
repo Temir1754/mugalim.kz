@@ -11,7 +11,18 @@ export async function POST(request: Request) {
     } = await request.json();
 
     if (!username || !password) {
-      return NextResponse.json({ error: 'Username and password are required' }, { status: 400 });
+      return NextResponse.json({ error: 'Логин мен құпия сөз міндетті' }, { status: 400 });
+    }
+
+    // Check DB connection
+    try {
+      await prisma.$connect();
+    } catch (connErr: any) {
+      console.error('DB Connection Error:', connErr);
+      return NextResponse.json({ 
+        error: 'Деректер қорына қосылу мүмкін болмады', 
+        details: connErr.message 
+      }, { status: 500 });
     }
 
     // Check if user exists

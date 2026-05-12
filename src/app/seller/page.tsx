@@ -1,15 +1,112 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Footer from "@/components/Footer";
+import { supabase } from "@/lib/supabase";
 
 export default function SellerDashboard() {
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [myMaterials, setMyMaterials] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const materials = [
-    { title: "КТП Қазақ тілі", class: "3-сынып", status: "PENDING", date: "04.04.26 - сегодня" },
-    { title: "КСП Математика", class: "5-сынып", status: "APPROVED", date: "04.04.26 - сегодня" }
-  ];
+  // Form State
+  const [formData, setFormData] = useState({
+    type: "КТП",
+    subject: "",
+    classNumber: "",
+    price: "2500",
+    description: ""
+  });
+  const [file, setFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem("user");
+    if (savedUser) {
+      const parsed = JSON.parse(savedUser);
+      setUser(parsed);
+      fetchMyMaterials(parsed.id);
+    }
+  }, []);
+
+  const fetchMyMaterials = async (userId: string) => {
+    try {
+      const res = await fetch("/api/materials");
+      const all = await res.json();
+      setMyMaterials(Array.isArray(all) ? all.filter((m: any) => m.authorId === userId) : []);
+    } catch (err) {
+      console.error("Error fetching materials:", err);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!file || !user) {
+      alert("Файлды таңдаңыз немесе жүйеге қайта кіріңіз");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      console.log("Starting upload for file:", file.name);
+      // 1. Upload to Supabase Storage
+      // Sanitize filename: keep only letters, numbers, dots and underscores
+      const sanitizedName = file.name
+        .replace(/[^\x00-\x7F]/g, "") // Remove non-ASCII (Cyrillic etc)
+        .replace(/[\s\(\)]/g, "_")    // Replace spaces and parentheses with underscores
+        .replace(/_{2,}/g, "_");      // Remove double underscores
+
+      const fileName = `${Date.now()}_${sanitizedName || "document"}`;
+      
+      const { data: storageData, error: storageError } = await supabase.storage
+        .from('materials')
+        .upload(`uploads/${user.id}/${fileName}`, file);
+
+      if (storageError) {
+        console.error("Supabase Storage Error:", storageError);
+        throw new Error(`Storage Error: ${storageError.message}`);
+      }
+
+      console.log("File uploaded successfully to storage:", storageData.path);
+
+      // 2. Get Public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('materials')
+        .getPublicUrl(storageData.path);
+
+      console.log("Generated public URL:", publicUrl);
+
+      // 3. Save to DB via our API
+      const res = await fetch("/api/materials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...formData,
+          fileUrl: publicUrl,
+          authorId: user.id
+        })
+      });
+
+      const dbResponse = await res.json();
+      if (!res.ok) {
+        console.error("DB Save Error:", dbResponse);
+        throw new Error(dbResponse.error || "Database saving failed");
+      }
+
+      console.log("Material saved to DB:", dbResponse.material);
+
+      alert("Материал сәтті жүктелді! Модерациядан кейін жарияланады.");
+      setShowUploadModal(false);
+      fetchMyMaterials(user.id);
+      
+      setFile(null);
+      setFormData({ type: "КТП", subject: "", classNumber: "", price: "2500", description: "" });
+
+    } catch (err: any) {
+      alert("Қате орын алды: " + err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="mobile-container" style={{ maxWidth: "100%", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
@@ -18,64 +115,66 @@ export default function SellerDashboard() {
           <div className="title-row">
             <h1>Басқару панелі</h1>
           </div>
-          <p className="subtitle">Материалдарды және табысты басқарыңыз</p>
+          <p className="subtitle">Сәлеметсіз бе, {user?.fio || "Автор"}!</p>
 
           <div className="grid-form" style={{ marginBottom: "40px" }}>
-            {/* Кошелек Продавца */}
-            <div className="form-card" style={{ padding: "30px", background: "linear-gradient(135deg, #34C759, #28A745)", color: "white", gridColumn: "span 2" }}>
-              <h3 style={{ margin: "0 0 10px 0", opacity: 0.9, fontSize: "1rem", fontWeight: "normal" }}>СІЗДІҢ АҒЫМДАҒЫ БАЛАНСЫҢЫЗ (84%)</h3>
-              <div style={{ fontSize: "3rem", fontWeight: "800" }}>145 000 ₸</div>
+            <div className="form-card" style={{ padding: "30px", background: "linear-gradient(135deg, #0A66F0, #0645A6)", color: "white", gridColumn: "span 2" }}>
+              <h3 style={{ margin: "0 0 10px 0", opacity: 0.9, fontSize: "1rem", fontWeight: "normal" }}>СІЗДІҢ ТАБЫСЫҢЫЗ</h3>
+              <div style={{ fontSize: "3rem", fontWeight: "800" }}>{user?.balance || 0} ₸</div>
               <p style={{ margin: "10px 0 0 0", opacity: 0.8, fontSize: "0.9rem" }}>Қаражат Kaspi арқылы шығаруға қолжетімді</p>
             </div>
             
             <div style={{ display: "flex", flexDirection: "column", gap: "10px", justifyContent: "center" }}>
                <button className="generate-btn" style={{ background: "#34C759", border: "none" }} onClick={() => setShowUploadModal(!showUploadModal)}>
-                 {showUploadModal ? "Жүктеу терезесін жабу" : "+ Жаңа КТП / КСП жүктеу"}
+                 {showUploadModal ? "Жабу" : "+ Жаңа материал жүктеу"}
                </button>
             </div>
           </div>
 
           {showUploadModal && (
-            <div className="form-card" style={{ padding: "30px", marginBottom: "40px", border: "2px dashed #34C759", background: "var(--box-tint)" }}>
-                <h2 style={{ marginBottom: "20px" }}>Жаңа материал</h2>
+            <div className="form-card" style={{ padding: "30px", marginBottom: "40px", border: "2px dashed #0A66F0", background: "rgba(10, 102, 240, 0.05)" }}>
+                <h2 style={{ marginBottom: "20px" }}>Жаңа материалды толтыру</h2>
                 <div className="grid-form">
                     <div className="input-group">
                         <span className="label">Файл түрі</span>
-                        <select className="input" style={{ background: "var(--input-bg)" }}>
-                            <option>КТП</option>
-                            <option>КСП</option>
+                        <select className="input" value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value})}>
+                            <option value="КТП">КТП</option>
+                            <option value="КСП">КСП</option>
+                            <option value="ПРЕЗЕНТАЦИЯ">Презентация</option>
                         </select>
                     </div>
                     <div className="input-group">
                         <span className="label">Пән</span>
-                        <input className="input" placeholder="Мысалы: Физика" style={{ background: "var(--input-bg)" }} />
+                        <input className="input" placeholder="Мысалы: Физика" value={formData.subject} onChange={(e) => setFormData({...formData, subject: e.target.value})} />
                     </div>
                     <div className="input-group">
                         <span className="label">Сынып</span>
-                        <input className="input" placeholder="7 сынып" style={{ background: "var(--input-bg)" }} />
+                        <input className="input" placeholder="7 сынып" value={formData.classNumber} onChange={(e) => setFormData({...formData, classNumber: e.target.value})} />
                     </div>
                     <div className="input-group">
                         <span className="label">Бағасы (₸)</span>
-                        <input className="input" type="number" placeholder="2500" style={{ background: "var(--input-bg)" }} />
+                        <input className="input" type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} />
                     </div>
                 </div>
+                
                 <div className="input-group" style={{ marginTop: "20px" }}>
-                    <span className="label">Мұғалімдерге арналған сипаттама</span>
-                    <textarea className="input" rows={4} placeholder="Бұл жоспар басқа мұғалімдерге қалай көмектеседі?" style={{ background: "var(--input-bg)" }} />
+                    <span className="label">Файлды таңдаңыз</span>
+                    <input type="file" className="input" onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)} />
                 </div>
-                <button className="generate-btn" style={{ background: "#34C759", marginTop: "20px" }} onClick={() => alert("Материал жіберілді!")}>
-                    Маркетте жариялау
+
+                <button className="generate-btn" style={{ background: "#0A66F0", marginTop: "20px" }} onClick={handleUpload} disabled={isLoading}>
+                    {isLoading ? "Жүктелуде..." : "Маркетке жіберу"}
                 </button>
             </div>
           )}
 
-          <h3 style={{ marginBottom: "20px" }}>Менің белсенді материалдарым</h3>
+          <h3 style={{ marginBottom: "20px" }}>Менің жүктелген материалдарым ({myMaterials.length})</h3>
           <div className="grid-catalog">
-            {materials.map((item, idx) => (
+            {myMaterials.map((item, idx) => (
               <div key={idx} className="form-card" style={{ padding: "20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
-                  <strong style={{ fontSize: "1.1rem" }}>{item.title} ({item.class})</strong>
-                  <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: "5px" }}>{item.date} - бүгін</div>
+                  <strong style={{ fontSize: "1.1rem" }}>{item.type} {item.subject} ({item.classNumber})</strong>
+                  <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: "5px" }}>{new Date(item.createdAt).toLocaleDateString()}</div>
                 </div>
                 <div>
                   <span style={{ 

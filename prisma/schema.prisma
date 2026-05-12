@@ -1,96 +1,114 @@
-// Это архитектура вашей Базы Данных, построенная строго по вашим фото!
-
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
-}
-
-// Роли пользователей: Клиент, Продавец, Админ
-enum Role {
-  CLIENT
-  SELLER
-  ADMIN
-}
-
-// Статусы документов (Модерация админом из фото: проверка...? -> одобренно... V)
-enum ApprovalStatus {
-  PENDING
-  APPROVED
-  REJECTED
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [uuid_ossp(map: "uuid-ossp", schema: "extensions"), vector]
 }
 
 model User {
-  id           String   @id @default(uuid())
-  role         Role     @default(CLIENT)
-  
-  // Общие поля (строго из ваших записей):
-  fio          String   // ФИО
-  phone        String   // Номер телефона
-  region       String   // Регион
-  schoolType     String?  // Тип школы (Мемлекеттік/Жекеменшік)
-  schoolName     String?  // Название школы
-  specialty      String   // Специальность
-  isClassTeacher String?  // Является ли классным руководителем
-  className      String?  // Номер класса
-  gender         String?  // Пол (опционально)
-  username     String   @unique // Логин
-  passwordHash String   // Пароль
-  
-  // У продавца есть Фото (Аватар)
-  avatarUrl    String?
-  
-  // Кошелек Клиента
-  balance      Float    @default(0) // Пополнить счет -> Каспий
-  subEndsAt    DateTime? // Для подписки: Біткен кезде подписка -> оплатить деп шығып тұру керек
-  
-  // Файлы, загруженные продавцом
-  materials    Material[] @relation("SellerMaterials")
-
-  // WhatsApp профиль
-  whatsAppProfile WhatsAppProfile?
+  id                 String           @id @default(uuid())
+  role               Role             @default(CLIENT)
+  fio                String
+  phone              String
+  region             String
+  schoolType         String?
+  schoolName         String?
+  specialty          String
+  isClassTeacher     String?
+  className          String?
+  gender             String?
+  username           String           @unique
+  passwordHash       String
+  avatarUrl          String?
+  balance            Float            @default(0)
+  subEndsAt          DateTime?
+  materials          Material[]       @relation("SellerMaterials")
+  whatsAppProfile    WhatsAppProfile?
+  purchasedMaterials Material[]       @relation("PurchasedMaterials")
 }
 
 model WhatsAppProfile {
   id              String   @id @default(uuid())
-  phone           String   @unique  // Номер телефона (главный ID в WhatsApp)
-  
-  // Сохраненный профиль (то, что спрашиваем один раз)
-  schoolName      String?           // Название школы
-  language        String?  @default("ru") // Язык (ru/kz)
-  mainSubject     String?           // Основной предмет учителя
-  
-  // Состояние диалога (AI State Machine)
+  phone           String   @unique
+  schoolName      String?
+  language        String?  @default("ru")
+  mainSubject     String?
   currentState    String   @default("IDLE")
-  
-  // Временный сейв данных для текущего документа
-  tempData        Json?    
-  
-  // Для функции "Продолжаем работать?"
+  tempData        Json?
   lastInteraction DateTime @updatedAt
-  
-  // Связь с основным аккаунтом на сайте (если есть)
   userId          String?  @unique
   user            User?    @relation(fields: [userId], references: [id])
 }
 
 model Material {
-  id             String         @id @default(uuid())
-  type           String         // КТП или КСП
-  subject        String         // Предмет (қазақ тілі)
-  dayOfWeek      String         // День (Пн)
-  classNumber    String         // Сынып (урок)
-  
-  authorId       String
-  author         User           @relation("SellerMaterials", fields: [authorId], references: [id])
-  
-  // Статус (Проверка админом)
-  status         ApprovalStatus @default(PENDING) 
-  fileUrl        String         // Скачать
-  
-  createdAt      DateTime       @default(now())
+  id          String         @id @default(uuid())
+  type        String
+  subject     String
+  dayOfWeek   String
+  classNumber String
+  authorId    String
+  status      ApprovalStatus @default(PENDING)
+  fileUrl     String
+  createdAt   DateTime       @default(now())
+  author      User           @relation("SellerMaterials", fields: [authorId], references: [id])
+  purchasers  User[]         @relation("PurchasedMaterials")
+}
+
+model Subject {
+  id        String     @id @default(uuid())
+  name      String     @unique
+  textbooks Textbook[]
+}
+
+model Textbook {
+  id        String           @id @default(uuid())
+  subjectId String
+  grade     Int
+  publisher String
+  year      Int
+  author    String
+  part      Int?             // Новое поле: часть
+  language  String?          // Новое поле: язык (kz/ru)
+  createdAt DateTime         @default(now())
+  chunks    KnowledgeChunk[]
+  subject   Subject          @relation(fields: [subjectId], references: [id])
+  topics    Topic[]
+}
+
+model Topic {
+  id         String   @id @default(uuid())
+  textbookId String
+  name       String
+  chapter    String?
+  objectives String?
+  order      Int      @default(0)
+  textbook   Textbook @relation(fields: [textbookId], references: [id])
+}
+
+model KnowledgeChunk {
+  id         String                 @id @default(uuid())
+  textbookId String
+  content    String
+  pageNumber Int?
+  embedding  Unsupported("vector")?
+  createdAt  DateTime               @default(now())
+  textbook   Textbook               @relation(fields: [textbookId], references: [id])
+}
+
+enum Role {
+  CLIENT
+  SELLER
+  ADMIN
+  SCHOOL_ADMIN
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }

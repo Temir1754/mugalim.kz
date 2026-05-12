@@ -4,15 +4,12 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLanguage } from "@/context/LanguageContext";
-import Footer from "@/components/Footer";
 
 function LoginForm() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const { t } = useLanguage();
+  const searchParams = useSearchParams();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -27,20 +24,8 @@ function LoginForm() {
     e.preventDefault();
     setIsLoading(true);
     setError("");
-    setSuccess("");
     
     try {
-      const allUsers = JSON.parse(localStorage.getItem("registeredUsers") || "[]");
-      const localUser = allUsers.find((u: any) => (u.username === username || u.phone === username) && u.password === password);
-
-      if (localUser) {
-        localStorage.setItem("user", JSON.stringify(localUser));
-        if (localUser.role === "ADMIN") window.location.href = "/admin";
-        else if (localUser.role === "SELLER") window.location.href = "/seller";
-        else window.location.href = "/client";
-        return;
-      }
-
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -51,9 +36,15 @@ function LoginForm() {
       if (!res.ok) throw new Error(data.error || "Login failed");
 
       localStorage.setItem("user", JSON.stringify(data.user));
-      if (data.user.role === "ADMIN") window.location.href = "/admin";
-      else if (data.user.role === "SELLER") window.location.href = "/seller";
-      else window.location.href = "/";
+      
+      // Redirect based on role
+      if (data.user.role === "ADMIN") {
+        window.location.href = "/admin";
+      } else if (data.user.role === "SELLER") {
+        window.location.href = "/seller";
+      } else {
+        window.location.href = "/client";
+      }
       
     } catch (err: any) {
       setError(err.message);
@@ -62,112 +53,61 @@ function LoginForm() {
     }
   };
 
-  const inputStyle = {
-    width: "100%",
-    padding: "16px 20px",
-    borderRadius: "16px",
-    border: "1px solid #e2e8f0",
-    background: "#f8fafc",
-    fontSize: "1rem",
-    outline: "none",
-    boxSizing: "border-box" as const,
-    fontFamily: "sans-serif",
-    transition: "0.2s"
-  };
-
   return (
-    <div style={{ width: "100%", maxWidth: "420px", fontFamily: "sans-serif" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "40px" }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: "2.5rem", fontWeight: 900, letterSpacing: "-1px", color: "#0f172a" }}>Кіру</h1>
-          <p style={{ margin: "5px 0 0", color: "#64748b", fontWeight: 600 }}>Жеке кабинетке өтіңіз</p>
+    <div className="auth-card">
+      <div className="auth-title">
+        <div className="logo" style={{ fontSize: '2rem', marginBottom: '8px', display: 'block' }}>mu-ga-lim.kz</div>
+        <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 500 }}>
+          Қазақстан мұғалімдеріне арналған кәсіби платформа
         </div>
       </div>
 
+      <h2 className="serif" style={{ fontSize: '1.75rem', marginBottom: '24px', textAlign: 'center' }}>Жүйеге кіру</h2>
+
       <form onSubmit={handleLogin}>
-        {success && <div style={{ background: "#f0fdf4", color: "#16a34a", padding: "12px 16px", borderRadius: "12px", marginBottom: "20px", fontSize: "0.9rem", fontWeight: 600, border: "1px solid #dcfce7" }}>{success}</div>}
-        {error && <div style={{ background: "#fef2f2", color: "#dc2626", padding: "12px 16px", borderRadius: "12px", marginBottom: "20px", fontSize: "0.9rem", fontWeight: 600, border: "1px solid #fee2e2" }}>{error}</div>}
+        {success && <div style={{ color: "#16a34a", marginBottom: "16px", fontSize: "0.9rem", textAlign: 'center' }}>{success}</div>}
+        {error && <div style={{ color: "#dc2626", marginBottom: "16px", fontSize: "0.9rem", textAlign: 'center' }}>{error}</div>}
 
-        <div style={{ marginBottom: "15px" }}>
-            <input 
-              type="text" 
-              placeholder="Логин немесе телефон" 
-              required 
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              style={inputStyle}
-            />
+        <div style={{ marginBottom: "16px" }}>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: 'var(--accent-slate)' }}>Электрондық пошта немесе логин</label>
+          <input 
+            type="text" 
+            placeholder="example@mugalim.kz" 
+            required 
+            className="input"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
         </div>
 
-        <div style={{ marginBottom: "15px", position: "relative" }}>
-            <input 
-              type={showPassword ? "text" : "password"} 
-              placeholder="Құпия сөз" 
-              required 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={{ ...inputStyle, paddingRight: "80px" }}
-            />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: "15px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: "0.8rem", color: "#0A66F0", fontWeight: "bold" }}>
-              {showPassword ? "Жасыру" : "Көрсету"}
-            </button>
-        </div>
-
-        <div style={{ textAlign: "right", marginBottom: "25px" }}>
-          <Link href="/forgot-password" style={{ fontSize: "0.9rem", color: "#64748b", textDecoration: "none", fontWeight: 600 }}>
-            Құпия сөзді ұмыттыңыз ба?
-          </Link>
+        <div style={{ marginBottom: "24px" }}>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: 'var(--accent-slate)' }}>Құпия сөз</label>
+          <input 
+            type="password" 
+            placeholder="••••••••" 
+            required 
+            className="input"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
         </div>
 
         <button 
           type="submit" 
           disabled={isLoading} 
-          style={{ 
-            width: "100%", 
-            padding: "18px", 
-            borderRadius: "18px", 
-            background: "#0A66F0", 
-            color: "white", 
-            border: "none", 
-            fontWeight: 800, 
-            cursor: "pointer", 
-            fontSize: "1rem",
-            boxShadow: "0 10px 20px rgba(10, 102, 240, 0.2)",
-            transition: "0.2s"
-          }}
+          className="btn-primary"
+          style={{ width: '100%', marginBottom: '20px' }}
         >
-          {isLoading ? "..." : "Жүйеге кіру"}
+          {isLoading ? "Кіру..." : "Кіру"}
         </button>
       </form>
 
-      <p style={{ textAlign: "center", marginTop: "25px", color: "#64748b", fontWeight: 500 }}>
-        Аккаунтыңыз жоқ па? <Link href="/register" style={{ color: "#0A66F0", fontWeight: 800, textDecoration: "none" }}>Тіркелу</Link>
-      </p>
-
-      <div style={{ marginTop: "40px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "15px", color: "#cbd5e1", fontSize: "0.75rem", marginBottom: "25px" }}>
-            <div style={{ flex: 1, height: "1px", background: "#f1f5f9" }}></div>
-            <span style={{ fontWeight: 800, letterSpacing: "1px" }}>НЕМЕСЕ</span>
-            <div style={{ flex: 1, height: "1px", background: "#f1f5f9" }}></div>
-          </div>
-          <button type="button" style={{ 
-            width: "100%", 
-            padding: "14px", 
-            borderRadius: "16px", 
-            border: "1px solid #e2e8f0", 
-            background: "white", 
-            fontWeight: 700, 
-            cursor: "pointer", 
-            display: "flex", 
-            alignItems: "center", 
-            justifyContent: "center", 
-            gap: "12px", 
-            color: "#1e293b",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
-            transition: "0.2s"
-          }} onClick={() => alert("Жақында...")}>
-             Google арқылы кіру
-          </button>
+      <div style={{ textAlign: "center", fontSize: "0.9rem", color: "var(--text-muted)" }}>
+        Аккаунт жоқ па? <Link href="/register" style={{ color: "var(--primary-navy)", fontWeight: 700, textDecoration: 'none' }}>Тіркелу</Link>
+      </div>
+      
+      <div style={{ textAlign: "center", marginTop: "32px", fontSize: "0.8rem", color: "#cbd5e1" }}>
+        Тест үшін: admin / Temir173173 (әкімші аккаунты)
       </div>
     </div>
   );
@@ -175,56 +115,11 @@ function LoginForm() {
 
 export default function Login() {
   return (
-    <div style={{ background: "white", minHeight: "100vh", fontFamily: "sans-serif" }}>
-      <div style={{ display: "flex", minHeight: "100vh" }}>
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px" }}>
-          <Suspense fallback={<div>Жүктелуде...</div>}>
-            <LoginForm />
-          </Suspense>
-        </div>
-
-        <div className="visual-side" style={{ 
-          flex: 1, 
-          background: "#0A66F0", 
-          display: "flex", 
-          alignItems: "center", 
-          justifyContent: "center", 
-          position: "relative", 
-          overflow: "hidden" 
-        }}>
-           {/* Promo Banner Image */}
-           <img 
-              src="/images/login-promo.png" 
-              alt="Promo Banner" 
-              style={{ 
-                width: "90%", 
-                height: "auto", 
-                maxHeight: "90%",
-                objectFit: "contain",
-                zIndex: 2,
-                borderRadius: "24px",
-                boxShadow: "0 20px 50px rgba(0,0,0,0.15)"
-              }}
-           />
-           
-           {/* Optional Overlay if needed for contrast */}
-           <div style={{ 
-             position: "absolute", 
-             top: 0, 
-             left: 0, 
-             width: "100%", 
-             height: "100%", 
-             background: "linear-gradient(0deg, rgba(10, 102, 240, 0.4) 0%, rgba(10, 102, 240, 0) 100%)",
-             zIndex: 2 
-           }}></div>
-        </div>
-      </div>
-
-      <Footer />
-
-      <style jsx>{`
-        @media (max-width: 900px) { .visual-side { display: none !important; } }
-      `}</style>
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc" }}>
+      <Suspense fallback={<div>Жүктелуде...</div>}>
+        <LoginForm />
+      </Suspense>
     </div>
   );
 }
+
